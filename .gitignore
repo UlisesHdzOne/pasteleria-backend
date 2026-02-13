@@ -47,3 +47,4 @@ lerna-debug.log*
 
 # Build files
 *.tsbuildinfo
+/generated/prisma
