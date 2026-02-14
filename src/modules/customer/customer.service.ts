@@ -28,7 +28,7 @@ export class CustomerService {
     }
   }
 
-  private async ensureCustomerExists(id: string) {
+  async ensureCustomerExists(id: string) {
     const customer = await this.prisma.customer.findUnique({
       where: { id, deletedAt: null },
     });

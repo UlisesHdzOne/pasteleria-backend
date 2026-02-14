@@ -7,5 +7,8 @@ import { PrismaModule } from 'src/prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [CustomerController],
   providers: [CustomerService],
+  exports: [
+    CustomerService,// permite que el servicio sea inyectado en otros modulos
+  ], 
 })
 export class CustomerModule {}
