@@ -7,6 +7,7 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AddressResponse } from './type/address.response';
 import { CustomerService } from '../customer/customer.service';
+import { Address } from '@prisma/client';
 
 @Injectable()
 export class AddressService {
@@ -17,7 +18,19 @@ export class AddressService {
     private readonly customerService: CustomerService,
   ) {}
 
-  private async ensureAddressExists(addressId: string, customerId: string) {
+  private mapToResponse(address: Address): AddressResponse {
+    return {
+      id: address.id,
+      street: address.street,
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+      isDefault: address.isDefault,
+      createdAt: address.createdAt,
+    };
+  }
+
+  private async findAddressOrFail(addressId: string, customerId: string) {
     const address = await this.prisma.address.findFirst({
       where: {
         id: addressId,
@@ -31,6 +44,7 @@ export class AddressService {
         message: `La dirección no existe o no pertenece al cliente`,
       });
     }
+    return address;
   }
 
   async createAddress(
@@ -59,15 +73,7 @@ export class AddressService {
         },
       },
     });
-    return {
-      id: address.id,
-      street: address.street,
-      city: address.city,
-      state: address.state,
-      postalCode: address.postalCode,
-      isDefault: address.isDefault,
-      createdAt: address.createdAt,
-    };
+    return this.mapToResponse(address);
   }
 
   async setDefaultAddress(
@@ -75,7 +81,6 @@ export class AddressService {
     addressId: string,
   ): Promise<AddressResponse> {
     await this.customerService.ensureCustomerExists(customerId);
-    await this.ensureAddressExists(addressId, customerId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.address.updateMany({
@@ -83,22 +88,34 @@ export class AddressService {
         data: { isDefault: false },
       });
 
-      return tx.address.update({
-        where: { id: addressId },
+      const result = await tx.address.updateMany({
+        where: { id: addressId, customerId },
         data: { isDefault: true },
+      });
+
+      if (result.count === 0) {
+        throw new NotFoundException({
+          code: 'ADDRESS_NOT_FOUND',
+          message: `La dirección no existe o no pertenece al cliente`,
+        });
+      }
+
+      return tx.address.findFirstOrThrow({
+        where: { id: addressId, customerId },
       });
     });
 
-    return {
-      id: updated.id,
-      street: updated.street,
-      city: updated.city,
-      state: updated.state,
-      postalCode: updated.postalCode,
-      isDefault: updated.isDefault,
-      createdAt: updated.createdAt,
-    };
+    return this.mapToResponse(updated);
   }
 
+  async getAddressById(
+    customerId: string,
+    addressId: string,
+  ): Promise<AddressResponse> {
+    await this.customerService.ensureCustomerExists(customerId);
 
+    const address = await this.findAddressOrFail(addressId, customerId);
+
+    return this.mapToResponse(address);
+  }
 }
