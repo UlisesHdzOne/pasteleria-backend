@@ -139,4 +139,44 @@ export class AddressService {
 
     return this.mapToResponse(updated);
   }
+
+  async deleteAddress(customerId: string, addressId: string): Promise<void> {
+    await this.customerService.ensureCustomerExists(customerId);
+
+    const address = await this.findAddressOrFail(addressId, customerId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.address.delete({
+        where: { id: addressId },
+      });
+
+      // Si la eliminada era default, asignar otra como default
+      if (address.isDefault) {
+        const nextAddress = await tx.address.findFirst({
+          where: { customerId },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (nextAddress) {
+          await tx.address.update({
+            where: { id: nextAddress.id },
+            data: { isDefault: true },
+          });
+        }
+      }
+    });
+  }
+
+  async listAddressesByCustomer(
+    customerId: string,
+  ): Promise<AddressResponse[]> {
+    await this.customerService.ensureCustomerExists(customerId);
+
+    const addresses = await this.prisma.address.findMany({
+      where: { customerId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return addresses.map((address) => this.mapToResponse(address));
+  }
 }
