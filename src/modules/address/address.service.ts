@@ -1,3 +1,4 @@
+import { UpdateAddressDto } from './dto/update-address.dto';
 import {
   ConflictException,
   Injectable,
@@ -117,5 +118,25 @@ export class AddressService {
     const address = await this.findAddressOrFail(addressId, customerId);
 
     return this.mapToResponse(address);
+  }
+
+  async updateAddress(
+    customerId: string,
+    addressId: string,
+    updateAddressDto: UpdateAddressDto,
+  ): Promise<AddressResponse> {
+    await this.customerService.ensureCustomerExists(customerId);
+
+    // Verifica que exista y pertenezca al cliente
+    await this.findAddressOrFail(addressId, customerId);
+
+    const updated = await this.prisma.address.update({
+      where: { id: addressId },
+      data: {
+        ...updateAddressDto,
+      },
+    });
+
+    return this.mapToResponse(updated);
   }
 }
