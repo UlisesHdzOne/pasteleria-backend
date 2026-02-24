@@ -1,4 +1,4 @@
-import { AddressResponse } from './address.response';
+import { AddressResponse } from '../../address/type/address.response';
 
 export type CustomerResponse = {
   id: string;

@@ -6,10 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { FindCustomerQueryDto } from './dto/find-customer-query.dto';
 
 @Controller('customer')
 export class CustomerController {
@@ -39,7 +41,11 @@ export class CustomerController {
   }
 
   @Get()
-  async findAllCustomers() {
-    return this.customerService.findAllCustomers();
+  async findAllCustomers(@Query() query: FindCustomerQueryDto) {
+    return this.customerService.findAllCustomers(
+      query.page,
+      query.limit,
+      query.search,
+    );
   }
 }
