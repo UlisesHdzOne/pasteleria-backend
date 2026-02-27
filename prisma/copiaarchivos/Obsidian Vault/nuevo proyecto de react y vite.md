@@ -29,7 +29,7 @@ npm install
 # 2️⃣ Instalar Tailwind
 
 ```bash
-npm install -D tailwindcss postcss autoprefixer   ok 
+npm install -D tailwindcss postcss autoprefixer   
 npx tailwindcss init -p
 ```
 
