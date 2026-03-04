@@ -26,6 +26,10 @@ export class CustomerService {
     };
   }
 
+  private normalizePhone(phone: string): string {
+    return phone.replace(/\D/g, '');
+  }
+
   private async validateUniquePhone(phone: string, ignoreId?: string) {
     const existing = await this.prisma.customer.findUnique({
       where: { phone },
@@ -61,10 +65,12 @@ export class CustomerService {
   async createCustomer(
     createCustomerDto: CreateCustomerDto,
   ): Promise<CustomerResponse> {
-    await this.validateUniquePhone(createCustomerDto.phone);
+    const normalizedPhone = this.normalizePhone(createCustomerDto.phone);
+
+    await this.validateUniquePhone(normalizedPhone);
 
     const customer = await this.prisma.customer.create({
-      data: createCustomerDto,
+      data: { ...createCustomerDto, phone: normalizedPhone },
     });
     return this.mapToResponse(customer);
   }
@@ -81,13 +87,18 @@ export class CustomerService {
   ): Promise<CustomerResponse> {
     const customer = await this.findCustomerOrFail(id);
 
-    // Validar phone si se está actualizando y no es el mismo que ya tiene este cliente
-    if (updateCustomerDto.phone && updateCustomerDto.phone !== customer.phone) {
-      await this.validateUniquePhone(updateCustomerDto.phone, customer.id);
+    if (updateCustomerDto.phone) {
+      const normalizedPhone = this.normalizePhone(updateCustomerDto.phone);
+
+      if (normalizedPhone !== customer.phone) {
+        await this.validateUniquePhone(normalizedPhone, customer.id);
+      }
+
+      updateCustomerDto.phone = normalizedPhone;
     }
 
     const updated = await this.prisma.customer.update({
-      where: { id },
+      where: { id: customer.id },
       data: updateCustomerDto,
     });
 
@@ -113,56 +124,53 @@ export class CustomerService {
     search?: string,
   ): Promise<PaginatedResponse<CustomerResponse>> {
     const { skip, take } = PaginationHelper.validate(page, limit);
-    const where: Prisma.CustomerWhereInput = {
-      deletedAt: null, // <- no traer eliminados
+
+    // 👇 WHERE GLOBAL (sin búsqueda)
+    const whereGlobal: Prisma.CustomerWhereInput = {
+      deletedAt: null,
+    };
+
+    // 👇 WHERE FILTRADO
+    const whereFiltered: Prisma.CustomerWhereInput = {
+      deletedAt: null,
     };
 
     if (search) {
-      where.OR = [
+      const normalizedSearch = /\d/.test(search)
+        ? this.normalizePhone(search)
+        : null;
+
+      const orConditions: Prisma.CustomerWhereInput[] = [
         { firstName: { contains: search, mode: 'insensitive' } },
         { lastName: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
       ];
-    }
-    if (search) {
-      where.firstName = { contains: search, mode: 'insensitive' };
+
+      if (normalizedSearch) {
+        orConditions.push({
+          phone: { contains: normalizedSearch },
+        });
+      }
+
+      whereFiltered.OR = orConditions;
     }
 
-    const [Customers, total] = await Promise.all([
+    const [customers, totalFiltered, totalGlobal] = await Promise.all([
       this.prisma.customer.findMany({
-        where,
+        where: whereFiltered,
         skip,
         take,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          phone: true,
-          createdAt: true,
-          updatedAt: true,
-        },
         orderBy: { firstName: 'asc' },
       }),
-      this.prisma.customer.count({ where }),
+      this.prisma.customer.count({ where: whereFiltered }),
+      this.prisma.customer.count({ where: whereGlobal }),
     ]);
 
     return {
-      data: Customers.map((customer) => ({
-        id: customer.id,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        phone: customer.phone,
-        createdAt: customer.createdAt,
-        updatedAt: customer.updatedAt,
-      })),
-      meta: PaginationHelper.buildMeta(page, limit, total),
+      data: customers.map((c) => this.mapToResponse(c)),
+      meta: {
+        ...PaginationHelper.buildMeta(page, limit, totalFiltered),
+        totalGlobal,
+      },
     };
-
-    // const customers = await this.prisma.customer.findMany({
-    //   where: { deletedAt: null },
-    //   orderBy: { createdAt: 'desc' },
-    // });
-
-    // return customers.map((customer) => this.mapToResponse(customer));
   }
 }
