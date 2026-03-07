@@ -3,6 +3,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { ConfigModule } from '@nestjs/config';
 import { AddressModule } from './modules/address/address.module';
+import { CakeFlavorModule } from './cake-flavor/cake-flavor.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { AddressModule } from './modules/address/address.module';
     PrismaModule,
     CustomerModule,
     AddressModule,
+    CakeFlavorModule,
   ],
   controllers: [],
   providers: [],
