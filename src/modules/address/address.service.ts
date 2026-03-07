@@ -31,7 +31,10 @@ export class AddressService {
     };
   }
 
-  private async findAddressOrFail(addressId: string, customerId: string) {
+  private async findAddressOrFail(
+    addressId: string,
+    customerId: string,
+  ): Promise<Address> {
     const address = await this.prisma.address.findFirst({
       where: {
         id: addressId,
@@ -42,9 +45,10 @@ export class AddressService {
     if (!address) {
       throw new NotFoundException({
         code: 'ADDRESS_NOT_FOUND',
-        message: `La dirección no existe o no pertenece al cliente`,
+        message: 'La dirección no existe o no pertenece al cliente',
       });
     }
+
     return address;
   }
 
@@ -87,11 +91,6 @@ export class AddressService {
     await this.customerService.findCustomerOrFail(customerId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.address.updateMany({
-        where: { customerId },
-        data: { isDefault: false },
-      });
-
       const address = await tx.address.findUnique({
         where: { id: addressId },
       });
@@ -99,16 +98,19 @@ export class AddressService {
       if (!address || address.customerId !== customerId) {
         throw new NotFoundException({
           code: 'ADDRESS_NOT_FOUND',
-          message: `La dirección no existe o no pertenece al cliente`,
+          message: 'La dirección no existe o no pertenece al cliente',
         });
       }
 
-      const result = await tx.address.update({
+      await tx.address.updateMany({
+        where: { customerId },
+        data: { isDefault: false },
+      });
+
+      return tx.address.update({
         where: { id: addressId },
         data: { isDefault: true },
       });
-
-      return result;
     });
 
     return this.mapToResponse(updated);
@@ -132,10 +134,10 @@ export class AddressService {
   ): Promise<AddressResponse> {
     await this.customerService.findCustomerOrFail(customerId);
 
-    await this.findAddressOrFail(addressId, customerId);
+    const address = await this.findAddressOrFail(addressId, customerId);
 
     const updated = await this.prisma.address.update({
-      where: { id: addressId, customerId },
+      where: { id: address.id },
       data: updateAddressDto,
     });
 
@@ -152,7 +154,7 @@ export class AddressService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.address.delete({
-        where: { id: addressId },
+        where: { id: address.id },
       });
 
       if (address.isDefault) {
@@ -171,7 +173,7 @@ export class AddressService {
     });
 
     return {
-      message: `Dirección eliminada correctamente`,
+      message: 'Dirección eliminada correctamente',
     };
   }
 
