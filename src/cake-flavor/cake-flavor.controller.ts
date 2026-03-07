@@ -27,7 +27,7 @@ export class CakeFlavorController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.cakeFlavorService.findOneCakeFlavor (id);
+    return this.cakeFlavorService.findOneCakeFlavor(id);
   }
 
   @Patch(':id')

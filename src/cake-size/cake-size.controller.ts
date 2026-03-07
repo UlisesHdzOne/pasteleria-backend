@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { CakeSizeService } from './cake-size.service';
 import { CreateCakeSizeDto } from './dto/create-cake-size.dto';
 import { UpdateCakeSizeDto } from './dto/update-cake-size.dto';

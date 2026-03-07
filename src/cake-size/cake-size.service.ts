@@ -68,10 +68,7 @@ export class CakeSizeService {
   ): Promise<CakeSize> {
     const size = await this.findSizeOrFail(id);
 
-    if (
-      updateCakeSizeDto.people &&
-      updateCakeSizeDto.people !== size.people
-    ) {
+    if (updateCakeSizeDto.people && updateCakeSizeDto.people !== size.people) {
       await this.validateUniquePeople(updateCakeSizeDto.people, size.id);
     }
 
