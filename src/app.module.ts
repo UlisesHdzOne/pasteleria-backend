@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AddressModule } from './modules/address/address.module';
 import { CakeFlavorModule } from './cake-flavor/cake-flavor.module';
 import { CakeSizeModule } from './cake-size/cake-size.module';
+import { ExtraModule } from './extra/extra.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CakeSizeModule } from './cake-size/cake-size.module';
     AddressModule,
     CakeFlavorModule,
     CakeSizeModule,
+    ExtraModule,
   ],
   controllers: [],
   providers: [],
