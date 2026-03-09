@@ -76,12 +76,19 @@ model CakeSize {
 }
 
 model CakePrice {
-  id        String @id @default(uuid())
-  flavorId  String
-  flavor    CakeFlavor @relation(fields: [flavorId], references: [id])
-  sizeId    String
-  size      CakeSize   @relation(fields: [sizeId], references: [id])
-  price     Float
+  id       String @id @default(uuid())
+  flavorId String
+  sizeId   String
+  price    Float
+
+  flavor   CakeFlavor @relation(fields: [flavorId], references: [id])
+  size     CakeSize   @relation(fields: [sizeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([flavorId, sizeId])
+
 }
 
 model Extra {
