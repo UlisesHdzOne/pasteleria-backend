@@ -11,7 +11,6 @@ import { UpdateCakePriceDto } from './dto/update-cake-price.dto';
 
 import { CakePriceResponse } from './types/cake-price.response';
 import { CakeFlavorService } from 'src/cake-flavor/cake-flavor.service';
-import { CakeSize } from '@prisma/client';
 import { CakeSizeService } from 'src/cake-size/cake-size.service';
 
 @Injectable()
