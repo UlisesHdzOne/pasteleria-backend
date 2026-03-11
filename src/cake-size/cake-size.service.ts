@@ -12,7 +12,7 @@ import { CakeSize } from '@prisma/client';
 export class CakeSizeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async findSizeOrFail(id: string): Promise<CakeSize> {
+  public async findSizeOrFail(id: string): Promise<CakeSize> {
     const size = await this.prisma.cakeSize.findUnique({
       where: { id },
     });

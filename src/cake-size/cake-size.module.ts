@@ -7,5 +7,6 @@ import { PrismaModule } from 'src/prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [CakeSizeController],
   providers: [CakeSizeService],
+  exports: [CakeSizeService],
 })
 export class CakeSizeModule {}

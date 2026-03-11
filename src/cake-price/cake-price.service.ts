@@ -10,10 +10,17 @@ import { CreateCakePriceDto } from './dto/create-cake-price.dto';
 import { UpdateCakePriceDto } from './dto/update-cake-price.dto';
 
 import { CakePriceResponse } from './types/cake-price.response';
+import { CakeFlavorService } from 'src/cake-flavor/cake-flavor.service';
+import { CakeSize } from '@prisma/client';
+import { CakeSizeService } from 'src/cake-size/cake-size.service';
 
 @Injectable()
 export class CakePriceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cakeFlavorService: CakeFlavorService,
+    private readonly cakeSizeService: CakeSizeService,
+  ) {}
 
   // SELECT reutilizable (mejor práctica)
   private readonly cakePriceSelect = {
@@ -51,7 +58,7 @@ export class CakePriceService {
     }
   }
 
-  async findCakePriceOrFail(id: string) {
+  public async findCakePriceOrFail(id: string) {
     const cakePrice = await this.prisma.cakePrice.findUnique({
       where: { id },
       select: this.cakePriceSelect,
@@ -71,6 +78,9 @@ export class CakePriceService {
   async createCakePrice(
     createCakePriceDto: CreateCakePriceDto,
   ): Promise<CakePriceResponse> {
+    await this.cakeFlavorService.findFlavorOrFail(createCakePriceDto.flavorId);
+    await this.cakeSizeService.findSizeOrFail(createCakePriceDto.sizeId);
+
     const { flavorId, sizeId } = createCakePriceDto;
 
     await this.validateUniqueFlavorSize(flavorId, sizeId);
@@ -92,6 +102,15 @@ export class CakePriceService {
     id: string,
     updateCakePriceDto: UpdateCakePriceDto,
   ): Promise<CakePriceResponse> {
+    if (updateCakePriceDto.flavorId) {
+      await this.cakeFlavorService.findFlavorOrFail(
+        updateCakePriceDto.flavorId,
+      );
+    }
+    if (updateCakePriceDto.sizeId) {
+      await this.cakeSizeService.findSizeOrFail(updateCakePriceDto.sizeId);
+    }
+
     const cakePrice = await this.findCakePriceOrFail(id);
 
     if (updateCakePriceDto.flavorId || updateCakePriceDto.sizeId) {

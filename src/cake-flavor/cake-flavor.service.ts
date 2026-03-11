@@ -12,7 +12,7 @@ import { CakeFlavor } from '@prisma/client';
 export class CakeFlavorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async findFlavorOrFail(id: string): Promise<CakeFlavor> {
+  public async findFlavorOrFail(id: string): Promise<CakeFlavor> {
     const flavor = await this.prisma.cakeFlavor.findUnique({
       where: { id },
     });
