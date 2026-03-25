@@ -131,28 +131,25 @@ export class CustomerService {
     };
 
     // 👇 WHERE FILTRADO
-    const whereFiltered: Prisma.CustomerWhereInput = {
-      deletedAt: null,
-    };
+    const cleanSearch = search?.trim();
 
-    if (search) {
-      const normalizedSearch = /\d/.test(search)
-        ? this.normalizePhone(search)
+    const normalizedSearch =
+      cleanSearch && /\d/.test(cleanSearch)
+        ? this.normalizePhone(cleanSearch)
         : null;
 
-      const orConditions: Prisma.CustomerWhereInput[] = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-      ];
-
-      if (normalizedSearch) {
-        orConditions.push({
-          phone: { contains: normalizedSearch },
-        });
-      }
-
-      whereFiltered.OR = orConditions;
-    }
+    const whereFiltered: Prisma.CustomerWhereInput = {
+      deletedAt: null,
+      ...(cleanSearch && {
+        OR: [
+          { firstName: { contains: cleanSearch, mode: 'insensitive' } },
+          { lastName: { contains: cleanSearch, mode: 'insensitive' } },
+          ...(normalizedSearch
+            ? [{ phone: { contains: normalizedSearch } }]
+            : []),
+        ],
+      }),
+    };
 
     const [customers, totalFiltered, totalGlobal] = await Promise.all([
       this.prisma.customer.findMany({

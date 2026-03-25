@@ -70,7 +70,9 @@ model CakeFlavor {
 
 model CakeSize {
   id       String @id @default(uuid())
-  people   Int
+  name     String @unique
+  people   Int    @unique
+  description String?
   prices   CakePrice[]
   items    OrderItem[]
 }
