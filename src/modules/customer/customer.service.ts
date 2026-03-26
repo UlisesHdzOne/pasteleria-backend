@@ -10,6 +10,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { Customer, Prisma } from '@prisma/client';
 import { PaginationHelper } from 'src/common/helpers/pagination.helper';
 import { PaginatedResponse } from 'src/common/types/pagination.types';
+import { ValidationError } from 'src/common/types/validation-error.type';
 
 @Injectable()
 export class CustomerService {
@@ -36,12 +37,21 @@ export class CustomerService {
       select: { id: true },
     });
 
-    // Solo lanzar conflicto si existe otro cliente distinto
+    const errors: ValidationError[] = [];
+
     if (existing && existing.id !== ignoreId) {
-      throw new ConflictException({
+      errors.push({
         code: 'PHONE_ALREADY_EXISTS',
         message: `El teléfono "${phone}" ya está registrado`,
         field: 'phone',
+      });
+    }
+
+    if (errors.length > 0) {
+      throw new ConflictException({
+        code: 'VALIDATION_ERRORS',
+        message: 'Errores de validación',
+        errors,
       });
     }
   }
@@ -77,7 +87,6 @@ export class CustomerService {
 
   async getCustomerById(id: string): Promise<CustomerResponse> {
     const customer = await this.findCustomerOrFail(id);
-
     return this.mapToResponse(customer);
   }
 
@@ -89,11 +98,9 @@ export class CustomerService {
 
     if (updateCustomerDto.phone) {
       const normalizedPhone = this.normalizePhone(updateCustomerDto.phone);
-
       if (normalizedPhone !== customer.phone) {
         await this.validateUniquePhone(normalizedPhone, customer.id);
       }
-
       updateCustomerDto.phone = normalizedPhone;
     }
 
@@ -125,14 +132,9 @@ export class CustomerService {
   ): Promise<PaginatedResponse<CustomerResponse>> {
     const { skip, take } = PaginationHelper.validate(page, limit);
 
-    // 👇 WHERE GLOBAL (sin búsqueda)
-    const whereGlobal: Prisma.CustomerWhereInput = {
-      deletedAt: null,
-    };
+    const whereGlobal: Prisma.CustomerWhereInput = { deletedAt: null };
 
-    // 👇 WHERE FILTRADO
     const cleanSearch = search?.trim();
-
     const normalizedSearch =
       cleanSearch && /\d/.test(cleanSearch)
         ? this.normalizePhone(cleanSearch)
