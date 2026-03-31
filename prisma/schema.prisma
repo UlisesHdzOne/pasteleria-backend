@@ -36,7 +36,7 @@ model Address {
 model Order {
   id            String      @id @default(uuid())
   customerId    String
-  customer      Customer    @relation(fields: [customerId], references: [id])
+  customer      Customer    @relation(fields: [customerId], references: [id],onDelete:Restrict)
   orderDate     DateTime    @default(now())   // cuando se registró
   deliveryDate  DateTime    // fecha de entrega
   theme         String?     // temática
@@ -57,13 +57,13 @@ model OrderItem {
   flavor    CakeFlavor @relation(fields: [flavorId], references: [id])
   sizeId    String
   size      CakeSize   @relation(fields: [sizeId], references: [id])
-  price     Float
+  price     Decimal @db.Decimal(10,2)
   quantity  Int      @default(1)
 }
 
 model CakeFlavor {
   id      String @id @default(uuid())
-  name    String
+  name    String  @unique
   description String?  
   color       String?   
   prices  CakePrice[]
@@ -83,10 +83,10 @@ model CakePrice {
   id       String @id @default(uuid())
   flavorId String
   sizeId   String
-  price    Float
+  price    Decimal @db.Decimal(10,2)
 
-  flavor   CakeFlavor @relation(fields: [flavorId], references: [id])
-  size     CakeSize   @relation(fields: [sizeId], references: [id])
+  flavor   CakeFlavor @relation(fields: [flavorId], references: [id], onDelete: Restrict)
+  size     CakeSize   @relation(fields: [sizeId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,7 +98,7 @@ model CakePrice {
 model Extra {
   id      String  @id @default(uuid())
   name    String
-  price   Float
+  price   Decimal @db.Decimal(10,2)
   orders  OrderExtra[]
 }
 
@@ -109,7 +109,9 @@ model OrderExtra {
   extraId  String
   extra    Extra @relation(fields: [extraId], references: [id])
   quantity Int   @default(1)
-  price    Float
+  price    Decimal @db.Decimal(10,2)
+
+  @@unique([orderId, extraId])
 }
 
 model OrderImage {

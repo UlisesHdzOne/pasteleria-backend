@@ -6,7 +6,7 @@ import { AddressModule } from './modules/address/address.module';
 import { CakeFlavorModule } from './modules/cake-flavor/cake-flavor.module';
 import { CakeSizeModule } from './modules/cake-size/cake-size.module';
 import { ExtraModule } from './extra/extra.module';
-import { CakePriceModule } from './cake-price/cake-price.module';
+import { CakePriceModule } from './modules/cake-price/cake-price.module';
 
 @Module({
   imports: [
