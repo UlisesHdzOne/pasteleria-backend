@@ -64,6 +64,8 @@ model OrderItem {
 model CakeFlavor {
   id      String @id @default(uuid())
   name    String
+  description String?  
+  color       String?   
   prices  CakePrice[]
   items   OrderItem[]
 }
