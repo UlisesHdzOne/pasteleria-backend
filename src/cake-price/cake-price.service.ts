@@ -10,7 +10,7 @@ import { CreateCakePriceDto } from './dto/create-cake-price.dto';
 import { UpdateCakePriceDto } from './dto/update-cake-price.dto';
 
 import { CakePriceResponse } from './types/cake-price.response';
-import { CakeFlavorService } from 'src/cake-flavor/cake-flavor.service';
+import { CakeFlavorService } from 'src/modules/cake-flavor/cake-flavor.service';
 import { CakeSizeService } from 'src/modules/cake-size/cake-size.service';
 
 @Injectable()
