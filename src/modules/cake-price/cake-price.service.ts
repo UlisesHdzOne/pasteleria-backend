@@ -9,7 +9,6 @@ import { CakePriceResponse } from './types/cake-price.response';
 import { CakeFlavorService } from 'src/modules/cake-flavor/cake-flavor.service';
 import { CakeSizeService } from 'src/modules/cake-size/cake-size.service';
 import { buildConflictError } from 'src/common/utils/build-conflict-error';
-import { ValidationError } from 'src/common/types/validation-error.type';
 
 @Injectable()
 export class CakePriceService {
@@ -158,7 +157,7 @@ export class CakePriceService {
       select: this.cakePriceSelect,
     });
 
-    return { data: data.map(this.mapPrice) };
+    return { data: data.map((price) => this.mapPrice(price)) }; // ✅ fix
   }
 
   // 🎯 GET BY FLAVOR + SIZE

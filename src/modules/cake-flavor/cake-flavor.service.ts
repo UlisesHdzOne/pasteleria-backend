@@ -1,9 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCakeFlavorDto } from './dto/create-cake-flavor.dto';
 import { UpdateCakeFlavorDto } from './dto/update-cake-flavor.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CakeFlavor } from '@prisma/client';
-import { ValidationError } from 'src/common/types/validation-error.type';
 import { buildConflictError } from 'src/common/utils/build-conflict-error';
 
 @Injectable()
@@ -71,7 +70,9 @@ export class CakeFlavorService {
   }
 
   // ➕ CREATE
-  async createCakeFlavor(dto: CreateCakeFlavorDto): Promise<{ data: CakeFlavor }> {
+  async createCakeFlavor(
+    dto: CreateCakeFlavorDto,
+  ): Promise<{ data: CakeFlavor }> {
     await this.validateCreate(dto);
     const data = await this.prisma.cakeFlavor.create({ data: dto });
     return { data };
@@ -116,14 +117,16 @@ export class CakeFlavorService {
       where: { flavorId: flavor.id },
       select: { id: true },
     });
-    if (usedInOrders) buildConflictError([this.conflictErrors.delete.usedInOrders]);
+    if (usedInOrders)
+      buildConflictError([this.conflictErrors.delete.usedInOrders]);
 
     // 🔒 Restrict: verificar si tiene precios asociados
     const usedInPrices = await this.prisma.cakePrice.findFirst({
       where: { flavorId: flavor.id },
       select: { id: true },
     });
-    if (usedInPrices) buildConflictError([this.conflictErrors.delete.usedInPrices]);
+    if (usedInPrices)
+      buildConflictError([this.conflictErrors.delete.usedInPrices]);
 
     await this.prisma.cakeFlavor.delete({ where: { id: flavor.id } });
 

@@ -4,6 +4,7 @@ import { UpdateCakeSizeDto } from './dto/update-cake-size.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CakeSize } from '@prisma/client';
 import { buildConflictError } from 'src/common/utils/build-conflict-error';
+import { CakeSizeResponse } from './type/cake-size.response';
 
 @Injectable()
 export class CakeSizeService {
@@ -37,9 +38,24 @@ export class CakeSizeService {
     },
   };
 
+  // ✅ Campos que queremos retornar
+  private readonly cakeSizeSelect = {
+    id: true,
+    name: true,
+    people: true,
+    description: true,
+    createdAt: true,
+    updatedAt: true,
+  };
+
   // 🔍 find or fail
-  public async findSizeOrFail(id: string): Promise<CakeSize> {
-    const size = await this.prisma.cakeSize.findUnique({ where: { id } });
+  public async findSizeOrFail(
+    id: string,
+  ): Promise<CakeSize & { createdAt: Date; updatedAt: Date }> {
+    const size = await this.prisma.cakeSize.findUnique({
+      where: { id },
+      select: this.cakeSizeSelect,
+    });
 
     if (!size) {
       throw new NotFoundException({
@@ -70,7 +86,6 @@ export class CakeSizeService {
     const newName = dto.name ?? current.name;
     const newPeople = dto.people ?? current.people;
 
-    // Si no hay cambios, no validar
     if (newName === current.name && newPeople === current.people) return;
 
     const conflict = await this.prisma.cakeSize.findFirst({
@@ -84,41 +99,62 @@ export class CakeSizeService {
     if (conflict) buildConflictError(this.conflictErrors.createUpdate);
   }
 
+  // 🔹 Mapea la entidad a la respuesta
+  private mapSize(
+    size: CakeSize & { createdAt: Date; updatedAt: Date },
+  ): CakeSizeResponse {
+    return {
+      id: size.id,
+      name: size.name,
+      people: size.people,
+      description: size.description ?? '',
+      createdAt: size.createdAt,
+      updatedAt: size.updatedAt,
+    };
+  }
+
   // ➕ CREATE
-  async createCakeSize(dto: CreateCakeSizeDto): Promise<{ data: CakeSize }> {
+  async createCakeSize(
+    dto: CreateCakeSizeDto,
+  ): Promise<{ data: CakeSizeResponse }> {
     await this.validateCreate(dto);
-    const data = await this.prisma.cakeSize.create({ data: dto });
-    return { data };
+    const data = await this.prisma.cakeSize.create({
+      data: dto,
+      select: this.cakeSizeSelect,
+    });
+    return { data: this.mapSize(data) };
   }
 
   // 📋 LIST
-  async findAllCakeSize(): Promise<{ data: CakeSize[] }> {
+  async findAllCakeSize(): Promise<{ data: CakeSizeResponse[] }> {
     const data = await this.prisma.cakeSize.findMany({
       orderBy: { people: 'asc' },
+      select: this.cakeSizeSelect,
     });
-    return { data };
+    return { data: data.map((size) => this.mapSize(size)) }; // ✅ fix aplicado
   }
 
   // 🎯 GET ONE
-  async findOneCakeSize(id: string): Promise<{ data: CakeSize }> {
+  async findOneCakeSize(id: string): Promise<{ data: CakeSizeResponse }> {
     const data = await this.findSizeOrFail(id);
-    return { data };
+    return { data: this.mapSize(data) };
   }
 
   // ✏️ UPDATE
   async updateCakeSize(
     id: string,
     dto: UpdateCakeSizeDto,
-  ): Promise<{ data: CakeSize }> {
+  ): Promise<{ data: CakeSizeResponse }> {
     const current = await this.findSizeOrFail(id);
     await this.validateUpdate(id, dto, current);
 
     const data = await this.prisma.cakeSize.update({
       where: { id },
       data: dto,
+      select: this.cakeSizeSelect,
     });
 
-    return { data };
+    return { data: this.mapSize(data) };
   }
 
   // ❌ DELETE
