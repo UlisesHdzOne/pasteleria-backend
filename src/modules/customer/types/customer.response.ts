@@ -1,5 +1,3 @@
-import { AddressResponse } from '../../address/type/address.response';
-
 export type CustomerResponse = {
   id: string;
   firstName: string;
@@ -7,5 +5,4 @@ export type CustomerResponse = {
   phone: string;
   createdAt: Date;
   updatedAt: Date;
-  addresses?: AddressResponse[];
 };
