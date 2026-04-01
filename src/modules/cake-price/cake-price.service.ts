@@ -28,18 +28,28 @@ export class CakePriceService {
     updatedAt: true,
   };
 
-  private readonly conflictErrors: ValidationError[] = [
-    {
-      code: 'CAKE_PRICE_ALREADY_EXISTS',
-      message: 'Ya existe un precio para ese sabor y tamaño',
-      field: 'flavorId',
+  // ✅ Centralización de errores
+  private readonly conflictErrors = {
+    createUpdate: [
+      {
+        code: 'CAKE_PRICE_ALREADY_EXISTS',
+        message: 'Ya existe un precio para ese sabor y tamaño',
+        field: 'flavorId',
+      },
+      {
+        code: 'CAKE_PRICE_ALREADY_EXISTS',
+        message: 'Ya existe un precio para ese sabor y tamaño',
+        field: 'sizeId',
+      },
+    ],
+    notFound: {
+      cakePrice: {
+        code: 'CAKE_PRICE_NOT_FOUND',
+        message: 'No existe un precio para ese sabor y tamaño',
+        field: 'flavorId',
+      },
     },
-    {
-      code: 'CAKE_PRICE_ALREADY_EXISTS',
-      message: 'Ya existe un precio para ese sabor y tamaño',
-      field: 'sizeId',
-    },
-  ];
+  };
 
   private mapPrice(data: CakePrice): CakePriceResponse {
     return { ...data, price: Number(data.price) };
@@ -54,9 +64,8 @@ export class CakePriceService {
 
     if (!cakePrice) {
       throw new NotFoundException({
-        code: 'CAKE_PRICE_NOT_FOUND',
+        ...this.conflictErrors.notFound.cakePrice,
         message: `No se encontró el precio con id "${id}"`,
-        field: 'id',
       });
     }
 
@@ -70,7 +79,7 @@ export class CakePriceService {
       select: { id: true },
     });
 
-    if (conflict) buildConflictError(this.conflictErrors);
+    if (conflict) buildConflictError(this.conflictErrors.createUpdate);
   }
 
   // 🔍 Validación UPDATE
@@ -82,7 +91,6 @@ export class CakePriceService {
     const newFlavorId = dto.flavorId ?? current.flavorId;
     const newSizeId = dto.sizeId ?? current.sizeId;
 
-    // Si no cambió la combinación, no validar
     if (newFlavorId === current.flavorId && newSizeId === current.sizeId)
       return;
 
@@ -91,7 +99,7 @@ export class CakePriceService {
       select: { id: true },
     });
 
-    if (conflict) buildConflictError(this.conflictErrors);
+    if (conflict) buildConflictError(this.conflictErrors.createUpdate);
   }
 
   // ➕ CREATE
@@ -138,7 +146,6 @@ export class CakePriceService {
   // ❌ DELETE
   async deleteCakePrice(id: string): Promise<{ message: string }> {
     await this.findCakePriceOrFail(id);
-
     await this.prisma.cakePrice.delete({ where: { id } });
 
     return { message: 'Precio eliminado correctamente' };
@@ -151,7 +158,7 @@ export class CakePriceService {
       select: this.cakePriceSelect,
     });
 
-    return { data: data.map((item) => this.mapPrice(item)) };
+    return { data: data.map(this.mapPrice) };
   }
 
   // 🎯 GET BY FLAVOR + SIZE
@@ -165,11 +172,7 @@ export class CakePriceService {
     });
 
     if (!cakePrice) {
-      throw new NotFoundException({
-        code: 'CAKE_PRICE_NOT_FOUND',
-        message: 'No existe un precio para ese sabor y tamaño',
-        field: 'flavorId',
-      });
+      throw new NotFoundException(this.conflictErrors.notFound.cakePrice);
     }
 
     return { data: this.mapPrice(cakePrice) };
