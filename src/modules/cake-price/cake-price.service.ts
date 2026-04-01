@@ -1,16 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma, CakePrice } from '@prisma/client';
+import { CakePrice } from '@prisma/client';
 
 import { PrismaService } from 'src/prisma/prisma.service';
-
 import { CreateCakePriceDto } from './dto/create-cake-price.dto';
 import { UpdateCakePriceDto } from './dto/update-cake-price.dto';
-
 import { CakePriceResponse } from './types/cake-price.response';
 
 import { CakeFlavorService } from 'src/modules/cake-flavor/cake-flavor.service';
 import { CakeSizeService } from 'src/modules/cake-size/cake-size.service';
-
 import { buildConflictError } from 'src/common/utils/build-conflict-error';
 import { ValidationError } from 'src/common/types/validation-error.type';
 
@@ -31,28 +28,21 @@ export class CakePriceService {
     updatedAt: true,
   };
 
-  // 🔁 Decimal → number (tipado correcto)
-  private mapPrice(data: CakePrice): CakePriceResponse {
-    return {
-      ...data,
-      price: Number(data.price),
-    };
-  }
+  private readonly conflictErrors: ValidationError[] = [
+    {
+      code: 'CAKE_PRICE_ALREADY_EXISTS',
+      message: 'Ya existe un precio para ese sabor y tamaño',
+      field: 'flavorId',
+    },
+    {
+      code: 'CAKE_PRICE_ALREADY_EXISTS',
+      message: 'Ya existe un precio para ese sabor y tamaño',
+      field: 'sizeId',
+    },
+  ];
 
-  // ❗ errores reutilizables
-  private getConflictErrors(): ValidationError[] {
-    return [
-      {
-        code: 'CAKE_PRICE_ALREADY_EXISTS',
-        message: 'Ya existe un precio para ese sabor y tamaño',
-        field: 'flavorId',
-      },
-      {
-        code: 'CAKE_PRICE_ALREADY_EXISTS',
-        message: 'Ya existe un precio para ese sabor y tamaño',
-        field: 'sizeId',
-      },
-    ];
+  private mapPrice(data: CakePrice): CakePriceResponse {
+    return { ...data, price: Number(data.price) };
   }
 
   // 🔍 find or fail
@@ -73,35 +63,50 @@ export class CakePriceService {
     return cakePrice;
   }
 
+  // 🔍 Validación CREATE
+  private async validateCreate(dto: CreateCakePriceDto) {
+    const conflict = await this.prisma.cakePrice.findFirst({
+      where: { flavorId: dto.flavorId, sizeId: dto.sizeId },
+      select: { id: true },
+    });
+
+    if (conflict) buildConflictError(this.conflictErrors);
+  }
+
+  // 🔍 Validación UPDATE
+  private async validateUpdate(
+    id: string,
+    dto: UpdateCakePriceDto,
+    current: CakePrice,
+  ) {
+    const newFlavorId = dto.flavorId ?? current.flavorId;
+    const newSizeId = dto.sizeId ?? current.sizeId;
+
+    // Si no cambió la combinación, no validar
+    if (newFlavorId === current.flavorId && newSizeId === current.sizeId)
+      return;
+
+    const conflict = await this.prisma.cakePrice.findFirst({
+      where: { flavorId: newFlavorId, sizeId: newSizeId, NOT: { id } },
+      select: { id: true },
+    });
+
+    if (conflict) buildConflictError(this.conflictErrors);
+  }
+
   // ➕ CREATE
   async createCakePrice(
     dto: CreateCakePriceDto,
   ): Promise<{ data: CakePriceResponse }> {
     await this.cakeFlavorService.findFlavorOrFail(dto.flavorId);
     await this.cakeSizeService.findSizeOrFail(dto.sizeId);
+    await this.validateCreate(dto);
 
-    try {
-      const data = await this.prisma.cakePrice.create({
-        data: dto,
-        select: this.cakePriceSelect,
-      });
+    const data = await this.prisma.cakePrice.create({
+      data: dto,
+      select: this.cakePriceSelect,
+    });
 
-      return { data: this.mapPrice(data) };
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        buildConflictError(this.getConflictErrors());
-      }
-
-      throw error;
-    }
-  }
-
-  // 🔍 GET BY ID
-  async getCakePriceById(id: string): Promise<{ data: CakePriceResponse }> {
-    const data = await this.findCakePriceOrFail(id);
     return { data: this.mapPrice(data) };
   }
 
@@ -115,42 +120,28 @@ export class CakePriceService {
     if (dto.flavorId !== undefined) {
       await this.cakeFlavorService.findFlavorOrFail(dto.flavorId);
     }
-
     if (dto.sizeId !== undefined) {
       await this.cakeSizeService.findSizeOrFail(dto.sizeId);
     }
 
-    try {
-      const data = await this.prisma.cakePrice.update({
-        where: { id: current.id },
-        data: dto,
-        select: this.cakePriceSelect,
-      });
+    await this.validateUpdate(id, dto, current);
 
-      return { data: this.mapPrice(data) };
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        buildConflictError(this.getConflictErrors());
-      }
+    const data = await this.prisma.cakePrice.update({
+      where: { id },
+      data: dto,
+      select: this.cakePriceSelect,
+    });
 
-      throw error;
-    }
+    return { data: this.mapPrice(data) };
   }
 
   // ❌ DELETE
   async deleteCakePrice(id: string): Promise<{ message: string }> {
     await this.findCakePriceOrFail(id);
 
-    await this.prisma.cakePrice.delete({
-      where: { id },
-    });
+    await this.prisma.cakePrice.delete({ where: { id } });
 
-    return {
-      message: 'Precio eliminado correctamente',
-    };
+    return { message: 'Precio eliminado correctamente' };
   }
 
   // 📋 LIST
@@ -160,9 +151,7 @@ export class CakePriceService {
       select: this.cakePriceSelect,
     });
 
-    return {
-      data: data.map((item) => this.mapPrice(item)),
-    };
+    return { data: data.map((item) => this.mapPrice(item)) };
   }
 
   // 🎯 GET BY FLAVOR + SIZE

@@ -27,7 +27,7 @@ export class CakePriceController {
     return this.cakePriceService.findAllCakePrices();
   }
 
-  // ruta específica (debe ir antes de :id)
+  // Ruta específica (debe ir antes de :id)
   @Get('by-flavor-size')
   getByFlavorAndSize(
     @Query('flavorId') flavorId: string,
@@ -38,7 +38,9 @@ export class CakePriceController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.cakePriceService.getCakePriceById(id);
+    return this.cakePriceService.findCakePriceOrFail(id).then((data) => ({
+      data: { ...data, price: Number(data.price) },
+    }));
   }
 
   @Patch(':id')
