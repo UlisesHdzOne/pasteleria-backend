@@ -1,113 +1,45 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCakeSizeDto } from './dto/create-cake-size.dto';
 import { UpdateCakeSizeDto } from './dto/update-cake-size.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CakeSize } from '@prisma/client';
-import { ValidationError } from 'src/common/types/validation-error.type';
+import { buildConflictError } from 'src/common/utils/build-conflict-error';
 
 @Injectable()
 export class CakeSizeService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async validateCreate(dto: CreateCakeSizeDto) {
-    const existing = await this.prisma.cakeSize.findMany({
-      where: {
-        OR: [{ name: dto.name }, { people: dto.people }],
+  private readonly conflictErrors = {
+    createUpdate: [
+      {
+        code: 'CAKE_SIZE_NAME_EXISTS',
+        message: 'Ya existe un tamaño con ese nombre',
+        field: 'name',
       },
-      select: { name: true, people: true },
-    });
-
-    const errors: ValidationError[] = [];
-
-    for (const item of existing) {
-      if (item.name === dto.name) {
-        errors.push({
-          code: 'CAKE_SIZE_NAME_EXISTS',
-          message: `Ya existe un tamaño llamado "${dto.name}"`,
-          field: 'name',
-        });
-      }
-
-      if (item.people === dto.people) {
-        errors.push({
-          code: 'CAKE_SIZE_PEOPLE_EXISTS',
-          message: `Ya existe un tamaño para ${dto.people} personas`,
-          field: 'people',
-        });
-      }
-    }
-
-    if (errors.length > 0) {
-      throw new ConflictException({
-        code: 'VALIDATION_ERRORS',
-        message: 'Errores de validación',
-        errors,
-      });
-    }
-  }
-
-  private async validateUpdate(
-    id: string,
-    dto: UpdateCakeSizeDto,
-    current: CakeSize,
-  ) {
-    const conditions: { name?: string; people?: number }[] = [];
-
-    if (dto.name !== undefined && dto.name !== current.name) {
-      conditions.push({ name: dto.name });
-    }
-
-    if (dto.people !== undefined && dto.people !== current.people) {
-      conditions.push({ people: dto.people });
-    }
-
-    if (conditions.length === 0) return;
-
-    const existing = await this.prisma.cakeSize.findMany({
-      where: {
-        OR: conditions,
-        NOT: { id },
+      {
+        code: 'CAKE_SIZE_PEOPLE_EXISTS',
+        message: 'Ya existe un tamaño para esa cantidad de personas',
+        field: 'people',
       },
-      select: { name: true, people: true },
-    });
+    ],
+    delete: {
+      usedInOrders: {
+        code: 'CAKE_SIZE_IN_USE',
+        message: 'No se puede eliminar el tamaño porque está en uso en pedidos',
+        field: 'id',
+      },
+      usedInPrices: {
+        code: 'CAKE_SIZE_IN_USE',
+        message:
+          'No se puede eliminar el tamaño porque tiene precios asociados',
+        field: 'id',
+      },
+    },
+  };
 
-    const errors: ValidationError[] = [];
-
-    for (const item of existing) {
-      if (dto.name !== undefined && item.name === dto.name) {
-        errors.push({
-          code: 'CAKE_SIZE_NAME_EXISTS',
-          message: `Ya existe un tamaño llamado "${dto.name}"`,
-          field: 'name',
-        });
-      }
-
-      if (dto.people !== undefined && item.people === dto.people) {
-        errors.push({
-          code: 'CAKE_SIZE_PEOPLE_EXISTS',
-          message: `Ya existe un tamaño para ${dto.people} personas`,
-          field: 'people',
-        });
-      }
-    }
-
-    if (errors.length > 0) {
-      throw new ConflictException({
-        code: 'VALIDATION_ERRORS',
-        message: 'Errores de validación',
-        errors,
-      });
-    }
-  }
-
+  // 🔍 find or fail
   public async findSizeOrFail(id: string): Promise<CakeSize> {
-    const size = await this.prisma.cakeSize.findUnique({
-      where: { id },
-    });
+    const size = await this.prisma.cakeSize.findUnique({ where: { id } });
 
     if (!size) {
       throw new NotFoundException({
@@ -119,81 +51,96 @@ export class CakeSizeService {
     return size;
   }
 
-  async createCakeSize(
-    createCakeSizeDto: CreateCakeSizeDto,
-  ): Promise<{ data: CakeSize }> {
-    await this.validateCreate(createCakeSizeDto);
+  // 🔍 Validación CREATE
+  private async validateCreate(dto: CreateCakeSizeDto) {
+    const conflict = await this.prisma.cakeSize.findFirst({
+      where: { OR: [{ name: dto.name }, { people: dto.people }] },
+      select: { name: true, people: true },
+    });
 
-    try {
-      const data = await this.prisma.cakeSize.create({
-        data: createCakeSizeDto,
-      });
-
-      return { data };
-    } catch {
-      throw new ConflictException({
-        code: 'CAKE_SIZE_CONFLICT',
-        message: 'Conflicto al crear el tamaño',
-      });
-    }
+    if (conflict) buildConflictError(this.conflictErrors.createUpdate);
   }
 
+  // 🔍 Validación UPDATE
+  private async validateUpdate(
+    id: string,
+    dto: UpdateCakeSizeDto,
+    current: CakeSize,
+  ) {
+    const newName = dto.name ?? current.name;
+    const newPeople = dto.people ?? current.people;
+
+    // Si no hay cambios, no validar
+    if (newName === current.name && newPeople === current.people) return;
+
+    const conflict = await this.prisma.cakeSize.findFirst({
+      where: {
+        OR: [{ name: newName }, { people: newPeople }],
+        NOT: { id },
+      },
+      select: { name: true, people: true },
+    });
+
+    if (conflict) buildConflictError(this.conflictErrors.createUpdate);
+  }
+
+  // ➕ CREATE
+  async createCakeSize(dto: CreateCakeSizeDto): Promise<{ data: CakeSize }> {
+    await this.validateCreate(dto);
+    const data = await this.prisma.cakeSize.create({ data: dto });
+    return { data };
+  }
+
+  // 📋 LIST
   async findAllCakeSize(): Promise<{ data: CakeSize[] }> {
     const data = await this.prisma.cakeSize.findMany({
       orderBy: { people: 'asc' },
     });
-
     return { data };
   }
 
+  // 🎯 GET ONE
   async findOneCakeSize(id: string): Promise<{ data: CakeSize }> {
     const data = await this.findSizeOrFail(id);
     return { data };
   }
 
+  // ✏️ UPDATE
   async updateCakeSize(
     id: string,
-    updateCakeSizeDto: UpdateCakeSizeDto,
+    dto: UpdateCakeSizeDto,
   ): Promise<{ data: CakeSize }> {
     const current = await this.findSizeOrFail(id);
+    await this.validateUpdate(id, dto, current);
 
-    await this.validateUpdate(id, updateCakeSizeDto, current);
+    const data = await this.prisma.cakeSize.update({
+      where: { id },
+      data: dto,
+    });
 
-    try {
-      const data = await this.prisma.cakeSize.update({
-        where: { id },
-        data: updateCakeSizeDto,
-      });
-
-      return { data };
-    } catch {
-      throw new ConflictException({
-        code: 'CAKE_SIZE_CONFLICT',
-        message: 'Conflicto al actualizar el tamaño',
-      });
-    }
+    return { data };
   }
-  async removeCakeSize(id: string): Promise<{ message: string }> {
-    const cakesize = await this.findSizeOrFail(id);
 
-    const used = await this.prisma.orderItem.findFirst({
-      where: { sizeId: cakesize.id },
+  // ❌ DELETE
+  async removeCakeSize(id: string): Promise<{ message: string }> {
+    const size = await this.findSizeOrFail(id);
+
+    const usedInOrders = await this.prisma.orderItem.findFirst({
+      where: { sizeId: size.id },
       select: { id: true },
     });
+    if (usedInOrders)
+      buildConflictError([this.conflictErrors.delete.usedInOrders]);
 
-    if (used) {
-      throw new ConflictException({
-        code: 'CAKE_SIZE_IN_USE',
-        message: 'No se puede eliminar el tamaño porque está en uso en pedidos',
-      });
-    }
-
-    await this.prisma.cakeSize.delete({
-      where: { id: cakesize.id },
+    const usedInPrices = await this.prisma.cakePrice.findFirst({
+      where: { sizeId: size.id },
+      select: { id: true },
     });
+    if (usedInPrices)
+      buildConflictError([this.conflictErrors.delete.usedInPrices]);
 
-    return {
-      message: 'Tamaño eliminado correctamente',
-    };
+    await this.prisma.cakeSize.delete({ where: { id: size.id } });
+
+    return { message: 'Tamaño eliminado correctamente' };
   }
 }
