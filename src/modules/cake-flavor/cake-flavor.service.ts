@@ -1,78 +1,38 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCakeFlavorDto } from './dto/create-cake-flavor.dto';
 import { UpdateCakeFlavorDto } from './dto/update-cake-flavor.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CakeFlavor } from '@prisma/client';
 import { ValidationError } from 'src/common/types/validation-error.type';
+import { buildConflictError } from 'src/common/utils/build-conflict-error';
 
 @Injectable()
 export class CakeFlavorService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async validateCreate(dto: CreateCakeFlavorDto) {
-    const existing = await this.prisma.cakeFlavor.findMany({
-      where: { name: dto.name },
-      select: { name: true },
-    });
+  private readonly conflictErrors = {
+    createUpdate: [
+      {
+        code: 'CAKE_FLAVOR_NAME_EXISTS',
+        message: 'Ya existe un sabor con ese nombre',
+        field: 'name',
+      },
+    ],
+    delete: {
+      usedInOrders: {
+        code: 'CAKE_FLAVOR_IN_USE',
+        message: 'No se puede eliminar el sabor porque está en uso en pedidos',
+        field: 'id',
+      },
+      usedInPrices: {
+        code: 'CAKE_FLAVOR_IN_USE',
+        message: 'No se puede eliminar el sabor porque tiene precios asociados',
+        field: 'id',
+      },
+    },
+  };
 
-    const errors: ValidationError[] = [];
-
-    for (const item of existing) {
-      if (item.name === dto.name) {
-        errors.push({
-          code: 'CAKE_FLAVOR_NAME_EXISTS',
-          message: `Ya existe un sabor llamado "${dto.name}"`,
-          field: 'name',
-        });
-      }
-    }
-
-    if (errors.length > 0) {
-      throw new ConflictException({
-        code: 'VALIDATION_ERRORS',
-        message: 'Errores de validación',
-        errors,
-      });
-    }
-  }
-
-  private async validateUpdate(
-    id: string,
-    dto: UpdateCakeFlavorDto,
-    current: CakeFlavor,
-  ) {
-    const errors: ValidationError[] = [];
-
-    if (dto.name && dto.name !== current.name) {
-      const existing = await this.prisma.cakeFlavor.findMany({
-        where: { name: dto.name, NOT: { id } },
-        select: { name: true },
-      });
-
-      for (const item of existing) {
-        if (item.name === dto.name) {
-          errors.push({
-            code: 'CAKE_FLAVOR_NAME_EXISTS',
-            message: `Ya existe un sabor llamado "${dto.name}"`,
-            field: 'name',
-          });
-        }
-      }
-    }
-
-    if (errors.length > 0) {
-      throw new ConflictException({
-        code: 'VALIDATION_ERRORS',
-        message: 'Errores de validación',
-        errors,
-      });
-    }
-  }
-
+  // 🔍 find or fail
   public async findFlavorOrFail(id: string): Promise<CakeFlavor> {
     const flavor = await this.prisma.cakeFlavor.findUnique({ where: { id } });
     if (!flavor) {
@@ -84,24 +44,40 @@ export class CakeFlavorService {
     return flavor;
   }
 
-  async createCakeFlavor(
-    createCakeFlavorDto: CreateCakeFlavorDto,
-  ): Promise<{ data: CakeFlavor }> {
-    await this.validateCreate(createCakeFlavorDto);
+  // 🔍 Validación CREATE
+  private async validateCreate(dto: CreateCakeFlavorDto) {
+    const existing = await this.prisma.cakeFlavor.findFirst({
+      where: { name: dto.name },
+      select: { id: true },
+    });
 
-    try {
-      const data = await this.prisma.cakeFlavor.create({
-        data: createCakeFlavorDto,
+    if (existing) buildConflictError(this.conflictErrors.createUpdate);
+  }
+
+  // 🔍 Validación UPDATE
+  private async validateUpdate(
+    id: string,
+    dto: UpdateCakeFlavorDto,
+    current: CakeFlavor,
+  ) {
+    if (dto.name && dto.name !== current.name) {
+      const existing = await this.prisma.cakeFlavor.findFirst({
+        where: { name: dto.name, NOT: { id } },
+        select: { id: true },
       });
-      return { data };
-    } catch {
-      throw new ConflictException({
-        code: 'CAKE_FLAVOR_CONFLICT',
-        message: 'Conflicto al crear el sabor',
-      });
+
+      if (existing) buildConflictError(this.conflictErrors.createUpdate);
     }
   }
 
+  // ➕ CREATE
+  async createCakeFlavor(dto: CreateCakeFlavorDto): Promise<{ data: CakeFlavor }> {
+    await this.validateCreate(dto);
+    const data = await this.prisma.cakeFlavor.create({ data: dto });
+    return { data };
+  }
+
+  // 📋 LIST
   async findAllCakeFlavor(): Promise<{ data: CakeFlavor[] }> {
     const data = await this.prisma.cakeFlavor.findMany({
       orderBy: { name: 'asc' },
@@ -109,48 +85,48 @@ export class CakeFlavorService {
     return { data };
   }
 
+  // 🎯 GET ONE
   async findOneCakeFlavor(id: string): Promise<{ data: CakeFlavor }> {
     const data = await this.findFlavorOrFail(id);
     return { data };
   }
 
+  // ✏️ UPDATE
   async updateCakeFlavor(
     id: string,
-    updateCakeFlavorDto: UpdateCakeFlavorDto,
+    dto: UpdateCakeFlavorDto,
   ): Promise<{ data: CakeFlavor }> {
     const current = await this.findFlavorOrFail(id);
-    await this.validateUpdate(id, updateCakeFlavorDto, current);
+    await this.validateUpdate(id, dto, current);
 
-    try {
-      const data = await this.prisma.cakeFlavor.update({
-        where: { id },
-        data: updateCakeFlavorDto,
-      });
-      return { data };
-    } catch {
-      throw new ConflictException({
-        code: 'CAKE_FLAVOR_CONFLICT',
-        message: 'Conflicto al actualizar el sabor',
-      });
-    }
+    const data = await this.prisma.cakeFlavor.update({
+      where: { id },
+      data: dto,
+    });
+
+    return { data };
   }
 
+  // ❌ DELETE
   async removeCakeFlavor(id: string): Promise<{ message: string }> {
     const flavor = await this.findFlavorOrFail(id);
 
-    const used = await this.prisma.orderItem.findFirst({
+    // 🔒 Restrict: verificar si está en uso en pedidos
+    const usedInOrders = await this.prisma.orderItem.findFirst({
       where: { flavorId: flavor.id },
       select: { id: true },
     });
+    if (usedInOrders) buildConflictError([this.conflictErrors.delete.usedInOrders]);
 
-    if (used) {
-      throw new ConflictException({
-        code: 'CAKE_FLAVOR_IN_USE',
-        message: 'No se puede eliminar el sabor porque está en uso en pedidos',
-      });
-    }
+    // 🔒 Restrict: verificar si tiene precios asociados
+    const usedInPrices = await this.prisma.cakePrice.findFirst({
+      where: { flavorId: flavor.id },
+      select: { id: true },
+    });
+    if (usedInPrices) buildConflictError([this.conflictErrors.delete.usedInPrices]);
 
     await this.prisma.cakeFlavor.delete({ where: { id: flavor.id } });
+
     return { message: 'Sabor eliminado correctamente' };
   }
 }
