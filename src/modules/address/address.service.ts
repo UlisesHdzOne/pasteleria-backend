@@ -1,14 +1,14 @@
-import { UpdateAddressDto } from './dto/update-address.dto';
 import {
-  ConflictException,
   Injectable,
   NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
-import { CreateAddressDto } from './dto/create-address.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AddressResponse } from './type/address.response';
 import { CustomerService } from '../customer/customer.service';
+import { CreateAddressDto } from './dto/create-address.dto';
+import { UpdateAddressDto } from './dto/update-address.dto';
 import { Address } from '@prisma/client';
+import { AddressResponse } from './type/address.response';
 
 @Injectable()
 export class AddressService {
@@ -19,16 +19,35 @@ export class AddressService {
     private readonly customerService: CustomerService,
   ) {}
 
+  private readonly addressSelect = {
+    id: true,
+    street: true,
+    city: true,
+    state: true,
+    postalCode: true,
+    isDefault: true,
+    createdAt: true,
+    updatedAt: true,
+    customerId: true,
+  };
+
+  private readonly conflictErrors = {
+    addressLimit: {
+      code: 'ADDRESS_LIMIT_REACHED',
+      message: `El cliente ya tiene el máximo de ${this.MAX_ADDRESSES} direcciones permitidas`,
+      field: 'customerId',
+    },
+    notFound: {
+      address: {
+        code: 'ADDRESS_NOT_FOUND',
+        message: 'La dirección no existe o no pertenece al cliente',
+        field: 'id',
+      },
+    },
+  };
+
   private mapToResponse(address: Address): AddressResponse {
-    return {
-      id: address.id,
-      street: address.street,
-      city: address.city,
-      state: address.state,
-      postalCode: address.postalCode,
-      isDefault: address.isDefault,
-      createdAt: address.createdAt,
-    };
+    return { ...address };
   }
 
   private async findAddressOrFail(
@@ -36,70 +55,129 @@ export class AddressService {
     customerId: string,
   ): Promise<Address> {
     const address = await this.prisma.address.findFirst({
-      where: {
-        id: addressId,
-        customerId,
-      },
+      where: { id: addressId, customerId },
+      select: this.addressSelect,
     });
 
     if (!address) {
-      throw new NotFoundException({
-        code: 'ADDRESS_NOT_FOUND',
-        message: 'La dirección no existe o no pertenece al cliente',
-      });
+      throw new NotFoundException(this.conflictErrors.notFound.address);
     }
 
     return address;
   }
 
+  // ➕ CREATE
   async createAddress(
     customerId: string,
-    createAddressDto: CreateAddressDto,
-  ): Promise<AddressResponse> {
+    dto: CreateAddressDto,
+  ): Promise<{ data: AddressResponse }> {
     await this.customerService.findCustomerOrFail(customerId);
 
     const address = await this.prisma.$transaction(async (tx) => {
-      const totalAddresses = await tx.address.count({
-        where: { customerId },
-      });
-
-      if (totalAddresses >= this.MAX_ADDRESSES) {
-        throw new ConflictException({
-          code: 'ADDRESS_LIMIT_REACHED',
-          message: `El cliente ya tiene el máximo de ${this.MAX_ADDRESSES} direcciones permitidas`,
-        });
+      const count = await tx.address.count({ where: { customerId } });
+      if (count >= this.MAX_ADDRESSES) {
+        throw new ConflictException(this.conflictErrors.addressLimit);
       }
 
       return tx.address.create({
         data: {
-          ...createAddressDto,
-          isDefault: totalAddresses === 0,
-          customer: {
-            connect: { id: customerId },
-          },
+          ...dto,
+          isDefault: count === 0,
+          customer: { connect: { id: customerId } },
         },
+        select: this.addressSelect,
       });
     });
 
-    return this.mapToResponse(address);
+    return { data: this.mapToResponse(address) };
   }
 
+  // ✏️ UPDATE
+  async updateAddress(
+    customerId: string,
+    addressId: string,
+    dto: UpdateAddressDto,
+  ): Promise<{ data: AddressResponse }> {
+    await this.customerService.findCustomerOrFail(customerId);
+    const address = await this.findAddressOrFail(addressId, customerId);
+
+    const updated = await this.prisma.address.update({
+      where: { id: address.id },
+      data: dto,
+      select: this.addressSelect,
+    });
+
+    return { data: this.mapToResponse(updated) };
+  }
+
+  // ❌ DELETE
+  async deleteAddress(
+    customerId: string,
+    addressId: string,
+  ): Promise<{ message: string }> {
+    await this.customerService.findCustomerOrFail(customerId);
+    const address = await this.findAddressOrFail(addressId, customerId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.address.delete({ where: { id: address.id } });
+
+      if (address.isDefault) {
+        const nextAddress = await tx.address.findFirst({
+          where: { customerId },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (nextAddress) {
+          await tx.address.update({
+            where: { id: nextAddress.id },
+            data: { isDefault: true },
+          });
+        }
+      }
+    });
+
+    return { message: 'Dirección eliminada correctamente' };
+  }
+
+  // 🔹 GET SINGLE
+  async getAddressById(
+    customerId: string,
+    addressId: string,
+  ): Promise<{ data: AddressResponse }> {
+    await this.customerService.findCustomerOrFail(customerId);
+    const address = await this.findAddressOrFail(addressId, customerId);
+    return { data: this.mapToResponse(address) };
+  }
+
+  // 📋 LIST
+  async listAddressesByCustomer(
+    customerId: string,
+  ): Promise<{ data: AddressResponse[] }> {
+    await this.customerService.findCustomerOrFail(customerId);
+
+    const addresses = await this.prisma.address.findMany({
+      where: { customerId },
+      orderBy: { createdAt: 'asc' },
+      select: this.addressSelect,
+    });
+
+    return { data: addresses.map((a) => this.mapToResponse(a)) };
+  }
+
+  // 🌟 SET DEFAULT
   async setDefaultAddress(
     customerId: string,
     addressId: string,
-  ): Promise<AddressResponse> {
+  ): Promise<{ data: AddressResponse }> {
     await this.customerService.findCustomerOrFail(customerId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const address = await tx.address.findUnique({
         where: { id: addressId },
+        select: this.addressSelect,
       });
 
       if (!address || address.customerId !== customerId) {
-        throw new NotFoundException({
-          code: 'ADDRESS_NOT_FOUND',
-          message: 'La dirección no existe o no pertenece al cliente',
-        });
+        throw new NotFoundException(this.conflictErrors.notFound.address);
       }
 
       await tx.address.updateMany({
@@ -110,83 +188,10 @@ export class AddressService {
       return tx.address.update({
         where: { id: addressId },
         data: { isDefault: true },
+        select: this.addressSelect,
       });
     });
 
-    return this.mapToResponse(updated);
-  }
-
-  async getAddressById(
-    customerId: string,
-    addressId: string,
-  ): Promise<AddressResponse> {
-    await this.customerService.findCustomerOrFail(customerId);
-
-    const address = await this.findAddressOrFail(addressId, customerId);
-
-    return this.mapToResponse(address);
-  }
-
-  async updateAddress(
-    customerId: string,
-    addressId: string,
-    updateAddressDto: UpdateAddressDto,
-  ): Promise<AddressResponse> {
-    await this.customerService.findCustomerOrFail(customerId);
-
-    const address = await this.findAddressOrFail(addressId, customerId);
-
-    const updated = await this.prisma.address.update({
-      where: { id: address.id },
-      data: updateAddressDto,
-    });
-
-    return this.mapToResponse(updated);
-  }
-
-  async deleteAddress(
-    customerId: string,
-    addressId: string,
-  ): Promise<{ message: string }> {
-    await this.customerService.findCustomerOrFail(customerId);
-
-    const address = await this.findAddressOrFail(addressId, customerId);
-
-    await this.prisma.$transaction(async (tx) => {
-      await tx.address.delete({
-        where: { id: address.id },
-      });
-
-      if (address.isDefault) {
-        const nextAddress = await tx.address.findFirst({
-          where: { customerId },
-          orderBy: { createdAt: 'asc' },
-        });
-
-        if (nextAddress) {
-          await tx.address.update({
-            where: { id: nextAddress.id },
-            data: { isDefault: true },
-          });
-        }
-      }
-    });
-
-    return {
-      message: 'Dirección eliminada correctamente',
-    };
-  }
-
-  async listAddressesByCustomer(
-    customerId: string,
-  ): Promise<AddressResponse[]> {
-    await this.customerService.findCustomerOrFail(customerId);
-
-    const addresses = await this.prisma.address.findMany({
-      where: { customerId },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    return addresses.map((address) => this.mapToResponse(address));
+    return { data: this.mapToResponse(updated) };
   }
 }
