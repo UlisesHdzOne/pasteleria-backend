@@ -11,9 +11,18 @@ model Customer {
   firstName  String
   lastName   String
   phone      String    @unique
+  email      String?   @unique
+
+  deletedAt  DateTime?
+
   addresses  Address[]
+
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+
+  @@index([firstName, lastName])
+  @@index([phone])
+  @@index([deletedAt])
 }
 
 model Address {
@@ -28,4 +37,7 @@ model Address {
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([customerId, isDefault])
 }
