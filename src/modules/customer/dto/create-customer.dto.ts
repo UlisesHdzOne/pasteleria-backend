@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsNotEmpty, IsString, Length, Matches } from 'class-validator';
 
 export class CreateCustomerDto {
   @IsString()
@@ -14,5 +14,6 @@ export class CreateCustomerDto {
   @IsString()
   @IsNotEmpty()
   @Length(10, 15)
+  @Matches(/^\d+$/, { message: 'El teléfono solo debe contener números' })
   phone!: string;
 }

@@ -27,7 +27,6 @@ export class AddressService {
     postalCode: true,
     isDefault: true,
     createdAt: true,
-    updatedAt: true,
     customerId: true,
   };
 

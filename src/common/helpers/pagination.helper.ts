@@ -21,7 +21,12 @@ export class PaginationHelper {
     return { skip: (page - 1) * limit, take: limit };
   }
 
-  static buildMeta(page: number, limit: number, total: number) {
+  static buildMeta(
+    page: number,
+    limit: number,
+    total: number,
+    totalGlobal: number = total,
+  ) {
     const totalPages = Math.ceil(total / limit);
 
     return {
@@ -31,6 +36,7 @@ export class PaginationHelper {
       totalPages,
       hasNext: page < totalPages,
       hasPrev: page > this.MIN_PAGE,
+      totalGlobal,
     };
   }
 }

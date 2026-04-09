@@ -3,7 +3,7 @@ import { CreateCakeFlavorDto } from './dto/create-cake-flavor.dto';
 import { UpdateCakeFlavorDto } from './dto/update-cake-flavor.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CakeFlavor } from '@prisma/client';
-import { buildConflictError } from 'src/common/utils/build-conflict-error';
+import { buildConflictError } from 'src/common/utils/temp-conflict-error';
 
 @Injectable()
 export class CakeFlavorService {

@@ -6,69 +6,43 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { CustomerResponse } from './types/customer.response';
-import { Customer, Prisma } from '@prisma/client';
 import { PaginationHelper } from 'src/common/helpers/pagination.helper';
+import { SearchHelper } from 'src/common/helpers/search.helper';
+import { ErrorCode } from 'src/common/enums/error-code.enum';
+import { BusinessErrorHelper } from 'src/common/utils/business-error.helper';
+import {
+  CUSTOMER_SELECT,
+  CustomerPayload,
+  Prisma,
+} from './types/customer.types';
 
 @Injectable()
 export class CustomerService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // ✅ Campos que queremos retornar
-  private readonly customerSelect = {
-    id: true,
-    firstName: true,
-    lastName: true,
-    phone: true,
-    createdAt: true,
-    updatedAt: true,
-    deletedAt: true,
-  };
+  private readonly customerSelect = CUSTOMER_SELECT;
 
-  // ✅ Centralización de errores
-  private readonly conflictErrors = {
-    phoneAlreadyExists: {
-      code: 'PHONE_ALREADY_EXISTS',
-      message: 'El teléfono ya está registrado',
-      field: 'phone',
-    },
-    notFound: {
-      customer: {
-        code: 'CUSTOMER_NOT_FOUND',
-        message: 'No se encontró el cliente',
-        field: 'id',
-      },
-    },
-  };
-
-  // 🔹 Mapea la entidad a la respuesta
-  private mapCustomer(customer: Customer): CustomerResponse {
-    return { ...customer };
-  }
-
-  // 🔹 Normaliza teléfono
   private normalizePhone(phone: string): string {
     return phone.replace(/\D/g, '');
   }
 
-  // 🔍 find or fail
-  public async findCustomerOrFail(id: string): Promise<Customer> {
-    const customer = await this.prisma.customer.findFirst({
-      where: { id, deletedAt: null },
+  public async findCustomerOrFail(id: string): Promise<CustomerPayload> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
       select: this.customerSelect,
     });
 
-    if (!customer) {
+    if (!customer || customer.deletedAt) {
       throw new NotFoundException({
-        ...this.conflictErrors.notFound.customer,
+        code: ErrorCode.CUSTOMER_NOT_FOUND,
         message: `No se encontró el cliente con id "${id}"`,
+        field: 'id',
       });
     }
 
     return customer;
   }
 
-  // 🔍 Validación CREATE/UPDATE
   private async validateUniquePhone(phone: string, ignoreId?: string) {
     const conflict = await this.prisma.customer.findFirst({
       where: ignoreId ? { phone, NOT: { id: ignoreId } } : { phone },
@@ -77,59 +51,73 @@ export class CustomerService {
 
     if (conflict) {
       throw new ConflictException({
-        code: 'VALIDATION_ERRORS',
-        message: 'Errores de validación',
-        errors: [this.conflictErrors.phoneAlreadyExists],
+        code: ErrorCode.PHONE_ALREADY_EXISTS,
+        message: 'El teléfono ya está registrado',
+        field: 'phone',
       });
     }
   }
 
-  // ➕ CREATE
-  async createCustomer(
-    dto: CreateCustomerDto,
-  ): Promise<{ data: CustomerResponse }> {
+  async createCustomer(dto: CreateCustomerDto): Promise<CustomerPayload> {
     const normalizedPhone = this.normalizePhone(dto.phone);
-    await this.validateUniquePhone(normalizedPhone);
 
+    // Validar teléfono único
+    const phoneConflict = await this.prisma.customer.findFirst({
+      where: { phone: normalizedPhone },
+      select: { id: true },
+    });
+
+    if (phoneConflict) {
+      throw new ConflictException({
+        code: ErrorCode.PHONE_ALREADY_EXISTS,
+        message: 'El teléfono ya está registrado',
+        field: 'phone',
+      });
+    }
+
+    // Crear cliente
     const customer = await this.prisma.customer.create({
       data: { ...dto, phone: normalizedPhone },
       select: this.customerSelect,
     });
 
-    return { data: this.mapCustomer(customer) };
+    return customer;
   }
 
-  // ✏️ UPDATE
   async updateCustomer(
     id: string,
     dto: UpdateCustomerDto,
-  ): Promise<{ data: CustomerResponse }> {
+  ): Promise<CustomerPayload> {
     const customer = await this.findCustomerOrFail(id);
+
+    const data: Prisma.CustomerUpdateInput = {
+      ...dto,
+    };
 
     if (dto.phone) {
       const normalizedPhone = this.normalizePhone(dto.phone);
+
       if (normalizedPhone !== customer.phone) {
         await this.validateUniquePhone(normalizedPhone, customer.id);
       }
-      dto.phone = normalizedPhone;
+
+      data.phone = normalizedPhone;
     }
 
     const updated = await this.prisma.customer.update({
       where: { id: customer.id },
-      data: dto,
+      data, // ✅ aquí sí usas data
       select: this.customerSelect,
     });
 
-    return { data: this.mapCustomer(updated) };
+    return updated;
   }
 
-  // 🔹 GET BY ID (para el controlador)
-  async getCustomerById(id: string): Promise<{ data: CustomerResponse }> {
+  async getCustomerById(id: string): Promise<CustomerPayload> {
     const customer = await this.findCustomerOrFail(id);
-    return { data: this.mapCustomer(customer) };
+    return customer;
   }
 
-  // ❌ DELETE (soft)
   async deleteCustomer(id: string): Promise<{ message: string }> {
     await this.findCustomerOrFail(id);
 
@@ -139,61 +127,85 @@ export class CustomerService {
     });
 
     return {
-      message: `Cliente con id "${id}" eliminado correctamente (lógicamente)`,
+      message: `Cliente con id "${id}" eliminado correctamente`,
     };
   }
 
-  // 📋 LIST con paginación y búsqueda
+  async restoreCustomer(id: string): Promise<CustomerPayload> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      select: this.customerSelect,
+    });
+
+    if (!customer || !customer.deletedAt) {
+      throw new NotFoundException({
+        code: ErrorCode.CUSTOMER_NOT_FOUND,
+        message: `No se encontró un cliente eliminado con id "${id}"`,
+        field: 'id',
+      });
+    }
+
+    const restored = await this.prisma.customer.update({
+      where: { id },
+      data: { deletedAt: null },
+      select: this.customerSelect,
+    });
+
+    return restored;
+  }
+
   async findAllCustomers(
     page: number = PaginationHelper.DEFAULT_PAGE,
     limit: number = PaginationHelper.DEFAULT_LIMIT,
-    search?: string,
-  ): Promise<{ data: CustomerResponse[]; meta: any }> {
+    searchTerm?: string,
+    sortByField?: string,
+    sortDirection?: 'asc' | 'desc',
+  ): Promise<{ data: CustomerPayload[]; meta: any }> {
     const { skip, take } = PaginationHelper.validate(page, limit);
 
-    const cleanSearch = search?.trim();
-    const normalizedSearch =
-      cleanSearch && /\d/.test(cleanSearch)
-        ? this.normalizePhone(cleanSearch)
-        : null;
+    // Construir cláusula WHERE para búsqueda en nombre, apellido y teléfono
+    const whereClause = SearchHelper.buildWhereClause(
+      searchTerm,
+      ['firstName', 'lastName'], // Campos de búsqueda de texto
+      'phone', // Campo de búsqueda numérica
+    );
 
-    const whereFiltered: Prisma.CustomerWhereInput = {
-      deletedAt: null,
-      ...(cleanSearch && {
-        OR: [
-          {
-            firstName: {
-              contains: cleanSearch,
-              mode: 'insensitive' as const,
-            },
-          },
-          {
-            lastName: {
-              contains: cleanSearch,
-              mode: 'insensitive' as const,
-            },
-          },
-          ...(normalizedSearch
-            ? [{ phone: { contains: normalizedSearch } }]
-            : []),
-        ],
-      }),
-    };
+    // Construir cláusula ORDER BY dinámicamente
+    const orderBy = this.buildOrderBy(sortByField, sortDirection);
 
-    const [customers, totalFiltered] = await Promise.all([
+    const [customers, totalFiltered, totalGlobal] = await Promise.all([
       this.prisma.customer.findMany({
-        where: whereFiltered,
+        where: whereClause,
         skip,
         take,
-        orderBy: { firstName: 'asc' },
+        orderBy,
         select: this.customerSelect,
       }),
-      this.prisma.customer.count({ where: whereFiltered }),
+      this.prisma.customer.count({ where: whereClause }),
+      this.prisma.customer.count({ where: { deletedAt: null } }),
     ]);
 
     return {
-      data: customers.map((c) => this.mapCustomer(c)),
-      meta: PaginationHelper.buildMeta(page, limit, totalFiltered),
+      data: customers,
+      meta: PaginationHelper.buildMeta(page, limit, totalFiltered, totalGlobal),
     };
+  }
+
+  private buildOrderBy(
+    sortByField?: string,
+    sortDirection: 'asc' | 'desc' = 'asc',
+  ) {
+    const validFields = [
+      'firstName',
+      'lastName',
+      'phone',
+      'createdAt',
+      'updatedAt',
+    ];
+    const field = validFields.includes(sortByField || '')
+      ? sortByField
+      : 'firstName';
+
+    return [{ [field as string]: sortDirection }];
   }
 }

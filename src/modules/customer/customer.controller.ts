@@ -7,6 +7,8 @@ import {
   Param,
   Delete,
   Query,
+  HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -18,6 +20,7 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   create(@Body() createCustomerDto: CreateCustomerDto) {
     return this.customerService.createCustomer(createCustomerDto);
   }
@@ -36,8 +39,15 @@ export class CustomerController {
   }
 
   @Delete(':id')
+  @HttpCode(HttpStatus.OK)
   delete(@Param('id') id: string) {
     return this.customerService.deleteCustomer(id);
+  }
+
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.OK)
+  restore(@Param('id') id: string) {
+    return this.customerService.restoreCustomer(id);
   }
 
   @Get()
@@ -46,6 +56,8 @@ export class CustomerController {
       query.page,
       query.limit,
       query.search,
+      query.sortBy,
+      query.sortOrder,
     );
   }
 }

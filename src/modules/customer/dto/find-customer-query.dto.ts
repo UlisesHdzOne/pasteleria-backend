@@ -1,20 +1,8 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { BaseQueryDto } from 'src/common/dto/base-query.dto';
+import { IsOptional, IsString } from 'class-validator';
 
-export class FindCustomerQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit: number = 10;
-
+export class FindCustomerQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsString()
-  search?: string;
+  status?: 'active' | 'inactive';
 }

@@ -3,8 +3,8 @@ import { CreateCakeSizeDto } from './dto/create-cake-size.dto';
 import { UpdateCakeSizeDto } from './dto/update-cake-size.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CakeSize } from '@prisma/client';
-import { buildConflictError } from 'src/common/utils/build-conflict-error';
 import { CakeSizeResponse } from './type/cake-size.response';
+import { buildConflictError } from 'src/common/utils/temp-conflict-error';
 
 @Injectable()
 export class CakeSizeService {

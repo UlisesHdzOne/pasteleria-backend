@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationFilter } from './common/filters/validation.filter';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -11,7 +13,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalFilters(new ValidationFilter());
+  app.useGlobalFilters(new ValidationFilter(), new ApiExceptionFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   app.useGlobalPipes(
     new ValidationPipe({

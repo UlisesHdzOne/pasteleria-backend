@@ -8,7 +8,7 @@ import { CakePriceResponse } from './types/cake-price.response';
 
 import { CakeFlavorService } from 'src/modules/cake-flavor/cake-flavor.service';
 import { CakeSizeService } from 'src/modules/cake-size/cake-size.service';
-import { buildConflictError } from 'src/common/utils/build-conflict-error';
+import { buildConflictError } from 'src/common/utils/temp-conflict-error';
 
 @Injectable()
 export class CakePriceService {
