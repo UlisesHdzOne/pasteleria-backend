@@ -5,7 +5,9 @@ export class CreateCustomerResponseDto {
   id!: string;
 
   @Expose()
-  @Transform(({ obj }) => `${obj.firstName} ${obj.lastName}`)
+  @Transform(({ obj }) =>
+    [obj.firstName, obj.lastName].filter(Boolean).join(' '),
+  )
   fullName!: string;
 
   @Expose()

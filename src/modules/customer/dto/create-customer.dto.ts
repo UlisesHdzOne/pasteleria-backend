@@ -1,7 +1,17 @@
 // dto/create-customer.dto.ts  (nombre del archivo)
-import { IsString, IsEmail, IsNotEmpty, IsOptional, MinLength, MaxLength, IsUrl } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  IsUrl,
+  Matches,
+} from 'class-validator';
 
-export class CreateCustomerDto {  // ← Clase sigue siendo PascalCase
+export class CreateCustomerDto {
+  // ← Clase sigue siendo PascalCase
   @IsString()
   @IsNotEmpty({ message: 'El nombre es requerido' })
   firstName!: string;
@@ -11,6 +21,10 @@ export class CreateCustomerDto {  // ← Clase sigue siendo PascalCase
   lastName!: string;
 
   @IsString()
+  @IsString()
+  @Matches(/^[0-9]+$/, {
+    message: 'El teléfono solo debe contener números',
+  })
   @IsNotEmpty({ message: 'El teléfono es requerido' })
   @MinLength(10, { message: 'El teléfono debe tener al menos 10 dígitos' })
   @MaxLength(15, { message: 'El teléfono no puede tener más de 15 dígitos' })

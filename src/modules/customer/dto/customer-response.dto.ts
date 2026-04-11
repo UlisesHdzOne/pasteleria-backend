@@ -7,8 +7,10 @@ export class CustomerResponseDto {
   id!: string;
 
   @Expose()
-  @Transform(({ obj }) => `${obj.firstName} ${obj.lastName}`)
-  fullName!: string;  // ← firstName + lastName combinados
+  @Transform(({ obj }) =>
+    [obj.firstName, obj.lastName].filter(Boolean).join(' '),
+  )
+  fullName!: string; // ← firstName + lastName combinados
 
   @Expose()
   phone!: string;
