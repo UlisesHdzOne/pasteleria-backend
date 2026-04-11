@@ -7,15 +7,15 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
-      POSTGRES_DB: ${POSTGRES_DB:-carwash_db}
+      POSTGRES_DB: ${POSTGRES_DB:-pasteleria_db}
     env_file:
       - .env
-    restart: unless-stopped # ← MEJOR que 'always'
+    restart: unless-stopped
     volumes:
-      - postgres_data:/var/lib/postgresql/data # ← PERSISTENCIA
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - app-network # ← RED AISLADA
-    healthcheck: # ← HEALTH CHECK
+      - pasteleria-network
+    healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
       interval: 10s
       timeout: 5s
@@ -23,10 +23,10 @@ services:
       start_period: 30s
 
 volumes:
-  postgres_data: # ← VOLUME DEFINIDO
+  postgres_data:
     name: pasteleria_postgres_data
 
 networks:
-  app-network: # ← NETWORK DEFINIDO
+  pasteleria-network:
     driver: bridge
-    name: carwash_network
+    name: pasteleria_network
