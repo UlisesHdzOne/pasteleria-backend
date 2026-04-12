@@ -1,5 +1,7 @@
-// dto/customer-response.dto.ts
+import { Customer } from '@prisma/client';
 import { Exclude, Expose, Transform } from 'class-transformer';
+
+type CustomerName = Pick<Customer, 'firstName' | 'lastName'>;
 
 @Exclude() // ← Por defecto, excluye todo
 export class CustomerResponseDto {
@@ -7,7 +9,7 @@ export class CustomerResponseDto {
   id!: string;
 
   @Expose()
-  @Transform(({ obj }) =>
+  @Transform(({ obj }: { obj: CustomerName }) =>
     [obj.firstName, obj.lastName].filter(Boolean).join(' '),
   )
   fullName!: string; // ← firstName + lastName combinados

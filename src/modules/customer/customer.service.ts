@@ -7,6 +7,8 @@ import { plainToInstance } from 'class-transformer';
 import { CreateCustomerResponseDto } from './dto/create-customer-response.dto';
 import { PaginationHelper } from '@/common/helpers/pagination.helper';
 import { PaginatedResponse } from '@/common/interfaces/paginated-response.interface';
+import { Prisma } from '@prisma/client';
+import { FindCustomerQueryDto } from './dto/find-customer-query.dto';
 
 @Injectable()
 export class CustomerService {
@@ -15,33 +17,92 @@ export class CustomerService {
   async create(data: CreateCustomerDto): Promise<CreateCustomerResponseDto> {
     const customer = await this.prisma.customer.create({
       data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        phone: data.phone,
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        phone: data.phone.replace(/\D/g, ''),
         email: data.email || null,
         avatar: data.avatar || null,
       },
     });
 
-    // ✅ Transformar el objeto de Prisma a tu DTO de respuesta
     return plainToInstance(CreateCustomerResponseDto, customer, {
       excludeExtraneousValues: true,
     });
   }
 
   async findAll(
-    pageParam: number = PaginationHelper.DEFAULT_PAGE,
-    limitParam: number = PaginationHelper.DEFAULT_LIMIT,
+    query: FindCustomerQueryDto,
   ): Promise<PaginatedResponse<CustomerResponseDto>> {
-    const { page, limit, skip, take } = PaginationHelper.validate(
-      pageParam,
-      limitParam,
-    );
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status = 'active',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      createdFrom,
+      createdTo,
+    } = query;
 
-    const [customers, total] = await Promise.all([
+    const { skip, take } = PaginationHelper.validate(page, limit);
+
+    const cleanSearch = search?.trim().replace(/\s+/g, ' ') || undefined;
+    const cleanPhoneSearch = cleanSearch?.replace(/\D/g, '');
+
+    // 👉 sort seguro
+    const allowedSort = ['firstName', 'lastName', 'createdAt'];
+    const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'createdAt';
+
+    const where: Prisma.CustomerWhereInput = {
+      // 👉 status (soft delete)
+      ...(status === 'deleted'
+        ? { deletedAt: { not: null } }
+        : status === 'all'
+          ? {}
+          : { deletedAt: null }),
+
+      // 👉 search
+      ...(cleanSearch && {
+        OR: [
+          {
+            firstName: {
+              contains: cleanSearch,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          {
+            lastName: {
+              contains: cleanSearch,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          ...(cleanPhoneSearch
+            ? [
+                {
+                  phone: {
+                    contains: cleanPhoneSearch,
+                  },
+                },
+              ]
+            : []),
+        ],
+      }),
+
+      // 👉 rango de fechas
+      ...((createdFrom || createdTo) && {
+        createdAt: {
+          ...(createdFrom && { gte: new Date(createdFrom) }),
+          ...(createdTo && { lte: new Date(createdTo) }),
+        },
+      }),
+    };
+
+    const [customers, total, totalAll] = await Promise.all([
       this.prisma.customer.findMany({
-        where: { deletedAt: null },
-        orderBy: { createdAt: 'desc' },
+        where,
+        orderBy: {
+          [safeSortBy]: sortOrder,
+        },
         skip,
         take,
         select: {
@@ -54,8 +115,9 @@ export class CustomerService {
           updatedAt: true,
         },
       }),
+      this.prisma.customer.count({ where }),
       this.prisma.customer.count({
-        where: { deletedAt: null },
+        where: { deletedAt: null }, // 👉 global activos
       }),
     ]);
 
@@ -63,7 +125,10 @@ export class CustomerService {
       data: plainToInstance(CustomerResponseDto, customers, {
         excludeExtraneousValues: true,
       }),
-      meta: PaginationHelper.buildMeta(page, limit, total),
+      meta: {
+        ...PaginationHelper.buildMeta(page, limit, total),
+        totalAll, // 👈 nuevo
+      },
     };
   }
 }

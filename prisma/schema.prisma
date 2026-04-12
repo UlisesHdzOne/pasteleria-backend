@@ -12,7 +12,7 @@ model Customer {
   lastName   String
   phone      String    @unique
   email      String?   @unique
-    avatar     String?   // ← URL o path de la imagen
+  avatar     String?   // ← URL o path de la imagen
 
 
   deletedAt  DateTime?

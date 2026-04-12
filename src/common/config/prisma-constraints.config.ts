@@ -2,14 +2,14 @@
 
 /**
  * Configuración centralizada de constraints de Prisma
- * 
+ *
  * Agrega aquí todos los constraints de unicidad y llaves foráneas
  * para mantener el filtro limpio y mantenible.
  */
 
 export interface ConstraintConfig {
-  field: string;      // Nombre del campo en la respuesta
-  message: string;    // Mensaje de error para el usuario
+  field: string; // Nombre del campo en la respuesta
+  message: string; // Mensaje de error para el usuario
 }
 
 export interface ModelConstraintConfig {
@@ -86,11 +86,17 @@ export const UNIQUE_PATTERNS: Array<{
 }> = [
   {
     pattern: /email/i,
-    getConfig: () => ({ field: 'email', message: 'El email ya está registrado' }),
+    getConfig: () => ({
+      field: 'email',
+      message: 'El email ya está registrado',
+    }),
   },
   {
     pattern: /phone/i,
-    getConfig: () => ({ field: 'phone', message: 'El teléfono ya está registrado' }),
+    getConfig: () => ({
+      field: 'phone',
+      message: 'El teléfono ya está registrado',
+    }),
   },
   {
     pattern: /sku/i,
@@ -109,7 +115,10 @@ export const UNIQUE_PATTERNS: Array<{
   },
   {
     pattern: /username/i,
-    getConfig: () => ({ field: 'username', message: 'El nombre de usuario ya está en uso' }),
+    getConfig: () => ({
+      field: 'username',
+      message: 'El nombre de usuario ya está en uso',
+    }),
   },
 ];
 
@@ -123,7 +132,10 @@ export const FOREIGN_PATTERNS: Array<{
   },
   {
     pattern: /address/i,
-    getConfig: () => ({ field: 'addressId', message: 'La dirección no existe' }),
+    getConfig: () => ({
+      field: 'addressId',
+      message: 'La dirección no existe',
+    }),
   },
   {
     pattern: /product/i,
@@ -131,7 +143,10 @@ export const FOREIGN_PATTERNS: Array<{
   },
   {
     pattern: /category/i,
-    getConfig: () => ({ field: 'categoryId', message: 'La categoría no existe' }),
+    getConfig: () => ({
+      field: 'categoryId',
+      message: 'La categoría no existe',
+    }),
   },
   {
     pattern: /user/i,

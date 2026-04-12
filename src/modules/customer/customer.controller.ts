@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
+import { FindCustomerQueryDto } from './dto/find-customer-query.dto';
 
 @Controller('customer')
 export class CustomerController {
@@ -12,7 +13,7 @@ export class CustomerController {
   }
 
   @Get()
-  findAll() {
-    return this.customerService.findAll();
+  findAll(@Query() query: FindCustomerQueryDto) {
+    return this.customerService.findAll(query);
   }
 }

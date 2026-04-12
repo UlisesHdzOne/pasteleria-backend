@@ -1,7 +1,4 @@
-import {
-  ValidationPipe,
-  BadRequestException,
-} from '@nestjs/common';
+import { ValidationPipe, BadRequestException } from '@nestjs/common';
 
 export class CustomValidationPipe extends ValidationPipe {
   constructor() {
@@ -14,9 +11,7 @@ export class CustomValidationPipe extends ValidationPipe {
         for (const error of errors) {
           const field = error.property;
 
-          formattedErrors[field] = Object.values(
-            error.constraints ?? {},
-          );
+          formattedErrors[field] = Object.values(error.constraints ?? {});
         }
 
         throw new BadRequestException({

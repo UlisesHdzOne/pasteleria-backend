@@ -3,42 +3,54 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
+  HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
+
+type ErrorResponse = {
+  statusCode?: number;
+  message?: string | string[];
+  errors?: Record<string, string[]>;
+};
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  catch(exception: any, host: ArgumentsHost) {
-    console.log('=== GlobalExceptionFilter Debug ===');
-    console.log('Exception type:', typeof exception);
-    console.log('Exception constructor:', exception?.constructor?.name);
-    console.log('Exception:', exception);
-    console.log('Is HttpException:', exception instanceof HttpException);
-    
+  catch(exception: unknown, host: ArgumentsHost): Response {
     const ctx = host.switchToHttp();
-    const res = ctx.getResponse();
+    const res = ctx.getResponse<Response>();
 
-    //  Errores HTTP (DTO, BadRequest, etc)
+    // 👉 HTTP exceptions (Nest)
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const response = exception.getResponse();
 
-      let errors: any = {};
+      let errors: Record<string, string[]> = {};
 
-      // Si ya tiene el formato correcto, no volver a envolver
-      if (response && typeof response === 'object' && (response as any).statusCode && (response as any).errors) {
-        return res.status(status).json(response);
+      if (
+        typeof response === 'object' &&
+        response !== null &&
+        'statusCode' in response &&
+        'errors' in response
+      ) {
+        return res.status(status).json(response as ErrorResponse);
       }
 
       if (typeof response === 'string') {
         errors = { message: [response] };
-      } else if ((response as any).message) {
-        const msg = (response as any).message;
+      } else if (
+        typeof response === 'object' &&
+        response !== null &&
+        'message' in response
+      ) {
+        const msg = (response as { message?: unknown }).message;
 
-        errors = Array.isArray(msg)
-          ? this.mapArrayErrors(msg)
-          : { message: [msg] };
-      } else {
-        errors = response;
+        if (Array.isArray(msg)) {
+          errors = this.mapArrayErrors(
+            msg.filter((m): m is string => typeof m === 'string'),
+          );
+        } else if (typeof msg === 'string') {
+          errors = { message: [msg] };
+        }
       }
 
       return res.status(status).json({
@@ -47,24 +59,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       });
     }
 
-    // 👉 fallback
-    return res.status(500).json({
-      statusCode: 500,
+    // 👉 fallback seguro
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       errors: {
         message: ['Internal server error'],
       },
     });
   }
 
-  private mapArrayErrors(messages: string[]) {
-    const errors: Record<string, string[]> = {};
-
-    for (const msg of messages) {
-      errors['message'] = errors['message']
-        ? [...errors['message'], msg]
-        : [msg];
-    }
-
-    return errors;
+  private mapArrayErrors(messages: string[]): Record<string, string[]> {
+    return {
+      message: messages,
+    };
   }
 }
