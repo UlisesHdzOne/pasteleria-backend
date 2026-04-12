@@ -5,7 +5,6 @@ export interface PaginatedMeta {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
-  totalAll?: number;
 }
 
 export interface PaginatedResponse<T> {

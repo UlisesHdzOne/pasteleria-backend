@@ -1,18 +1,17 @@
 import { Customer } from '@prisma/client';
 import { Exclude, Expose, Transform } from 'class-transformer';
+import { buildFullName } from '../utils/customer.utils';
 
 type CustomerName = Pick<Customer, 'firstName' | 'lastName'>;
 
-@Exclude() // ← Por defecto, excluye todo
+@Exclude() 
 export class CustomerResponseDto {
-  @Expose() // ← Solo expone esto
+  @Expose() 
   id!: string;
 
   @Expose()
-  @Transform(({ obj }: { obj: CustomerName }) =>
-    [obj.firstName, obj.lastName].filter(Boolean).join(' '),
-  )
-  fullName!: string; // ← firstName + lastName combinados
+  @Transform(({ obj }: { obj: CustomerName }) => buildFullName(obj))
+  fullName!: string; 
 
   @Expose()
   phone!: string;
@@ -26,5 +25,4 @@ export class CustomerResponseDto {
   @Expose()
   updatedAt!: Date;
 
-  // firstName, lastName, avatar, deletedAt NO están expuestos (correcto)
 }

@@ -1,14 +1,16 @@
-// customer.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CustomerResponseDto } from './dto/customer-response.dto';
-import { plainToInstance } from 'class-transformer';
 import { CreateCustomerResponseDto } from './dto/create-customer-response.dto';
-import { PaginationHelper } from '@/common/helpers/pagination.helper';
-import { PaginatedResponse } from '@/common/interfaces/paginated-response.interface';
-import { Prisma } from '@prisma/client';
 import { FindCustomerQueryDto } from './dto/find-customer-query.dto';
+import { PaginatedResponse } from '@/common/interfaces/paginated-response.interface';
+import { plainToInstance } from 'class-transformer';
+import { CustomerMapper } from './mappers/customer.mapper';
+import { CustomerQuery } from './query/customer.query';
+import { PaginationQuery } from '@/common/query/pagination-query';
+import { findPaginated } from '@/common/repositories/paginated.repository';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CustomerService {
@@ -16,13 +18,7 @@ export class CustomerService {
 
   async create(data: CreateCustomerDto): Promise<CreateCustomerResponseDto> {
     const customer = await this.prisma.customer.create({
-      data: {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        phone: data.phone.replace(/\D/g, ''),
-        email: data.email || null,
-        avatar: data.avatar || null,
-      },
+      data: CustomerMapper.toCreate(data),
     });
 
     return plainToInstance(CreateCustomerResponseDto, customer, {
@@ -33,102 +29,17 @@ export class CustomerService {
   async findAll(
     query: FindCustomerQueryDto,
   ): Promise<PaginatedResponse<CustomerResponseDto>> {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      status = 'active',
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      createdFrom,
-      createdTo,
-    } = query;
+    const { page, limit } = query;
 
-    const { skip, take } = PaginationHelper.validate(page, limit);
+    const customerQuery = new CustomerQuery(query);
+    const pagination = new PaginationQuery<Prisma.CustomerWhereInput>(customerQuery.where, page, limit);
 
-    const cleanSearch = search?.trim().replace(/\s+/g, ' ') || undefined;
-    const cleanPhoneSearch = cleanSearch?.replace(/\D/g, '');
-
-    // 👉 sort seguro
-    const allowedSort = ['firstName', 'lastName', 'createdAt'];
-    const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'createdAt';
-
-    const where: Prisma.CustomerWhereInput = {
-      // 👉 status (soft delete)
-      ...(status === 'deleted'
-        ? { deletedAt: { not: null } }
-        : status === 'all'
-          ? {}
-          : { deletedAt: null }),
-
-      // 👉 search
-      ...(cleanSearch && {
-        OR: [
-          {
-            firstName: {
-              contains: cleanSearch,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          {
-            lastName: {
-              contains: cleanSearch,
-              mode: Prisma.QueryMode.insensitive,
-            },
-          },
-          ...(cleanPhoneSearch
-            ? [
-                {
-                  phone: {
-                    contains: cleanPhoneSearch,
-                  },
-                },
-              ]
-            : []),
-        ],
-      }),
-
-      // 👉 rango de fechas
-      ...((createdFrom || createdTo) && {
-        createdAt: {
-          ...(createdFrom && { gte: new Date(createdFrom) }),
-          ...(createdTo && { lte: new Date(createdTo) }),
-        },
-      }),
-    };
-
-    const [customers, total, totalAll] = await Promise.all([
-      this.prisma.customer.findMany({
-        where,
-        orderBy: {
-          [safeSortBy]: sortOrder,
-        },
-        skip,
-        take,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          phone: true,
-          email: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      this.prisma.customer.count({ where }),
-      this.prisma.customer.count({
-        where: { deletedAt: null }, // 👉 global activos
-      }),
-    ]);
-
-    return {
-      data: plainToInstance(CustomerResponseDto, customers, {
-        excludeExtraneousValues: true,
-      }),
-      meta: {
-        ...PaginationHelper.buildMeta(page, limit, total),
-        totalAll, // 👈 nuevo
-      },
-    };
+    return findPaginated(
+      this.prisma.customer,
+      pagination,
+      customerQuery.orderBy,
+      CustomerMapper.SELECT,
+      CustomerResponseDto,
+    );
   }
 }

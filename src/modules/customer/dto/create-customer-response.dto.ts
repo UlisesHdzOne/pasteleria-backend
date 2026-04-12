@@ -1,5 +1,6 @@
 import { Expose, Transform } from 'class-transformer';
 import { Customer } from '@prisma/client';
+import { buildFullName } from '../utils/customer.utils';
 
 type CustomerRaw = Pick<Customer, 'firstName' | 'lastName' | 'createdAt'>;
 
@@ -8,9 +9,7 @@ export class CreateCustomerResponseDto {
   id!: string;
 
   @Expose()
-  @Transform(({ obj }: { obj: CustomerRaw }) =>
-    [obj.firstName, obj.lastName].filter(Boolean).join(' '),
-  )
+  @Transform(({ obj }: { obj: CustomerRaw }) => buildFullName(obj))
   fullName!: string;
 
   @Expose()

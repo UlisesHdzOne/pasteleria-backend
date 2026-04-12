@@ -1,4 +1,3 @@
-// dto/create-customer.dto.ts  (nombre del archivo)
 import {
   IsString,
   IsEmail,
@@ -11,7 +10,6 @@ import {
 } from 'class-validator';
 
 export class CreateCustomerDto {
-  // ← Clase sigue siendo PascalCase
   @IsString()
   @IsNotEmpty({ message: 'El nombre es requerido' })
   firstName!: string;
@@ -20,7 +18,6 @@ export class CreateCustomerDto {
   @IsNotEmpty({ message: 'El apellido es requerido' })
   lastName!: string;
 
-  @IsString()
   @IsString()
   @Matches(/^[0-9]+$/, {
     message: 'El teléfono solo debe contener números',
