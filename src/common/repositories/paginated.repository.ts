@@ -14,7 +14,13 @@ type PrismaModel<TWhere, TSelect, TOrder, TResult> = {
   count: (args: { where?: TWhere }) => Promise<number>;
 };
 
-export async function findPaginated<TResponse, TWhere, TSelect, TOrder, TResult>(
+export async function findPaginated<
+  TResponse,
+  TWhere,
+  TSelect,
+  TOrder,
+  TResult,
+>(
   model: PrismaModel<TWhere, TSelect, TOrder, TResult>,
   pagination: PaginationQuery<TWhere>,
   orderBy: TOrder,
