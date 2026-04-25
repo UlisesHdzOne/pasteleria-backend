@@ -1,15 +1,16 @@
-import { Expose, Transform } from 'class-transformer';
+import { Exclude, Expose, Transform } from 'class-transformer';
 import { Customer } from '@prisma/client';
 import { buildFullName } from '../utils/customer.utils';
 
-type CustomerRaw = Pick<Customer, 'firstName' | 'lastName' | 'createdAt'>;
+type CustomerCreate = Pick<Customer, 'firstName' | 'lastName' | 'createdAt'>;
 
+@Exclude()
 export class CreateCustomerResponseDto {
   @Expose()
   id!: string;
 
   @Expose()
-  @Transform(({ obj }: { obj: CustomerRaw }) => buildFullName(obj))
+  @Transform(({ obj }: { obj: CustomerCreate }) => buildFullName(obj))
   fullName!: string;
 
   @Expose()
@@ -19,7 +20,7 @@ export class CreateCustomerResponseDto {
   email!: string | null;
 
   @Expose()
-  @Transform(({ obj }: { obj: CustomerRaw }) => {
+  @Transform(({ obj }: { obj: CustomerCreate }) => {
     const date = new Date(obj.createdAt);
 
     return {

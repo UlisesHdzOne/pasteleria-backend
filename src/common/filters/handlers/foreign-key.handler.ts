@@ -1,18 +1,13 @@
-import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
 import { BasePrismaHandler } from './base-prisma.handler';
+import { ErrorContext } from './prisma-error-handler.interface';
 import {
   FOREIGN_KEYS,
   FOREIGN_PATTERNS,
   ConstraintConfig,
 } from '../../config/prisma-constraints.config';
-
-const DEPENDENCY_MESSAGES: Record<string, string> = {
-  address: 'No se puede eliminar porque tiene direcciones asociadas',
-  order: 'No se puede eliminar porque tiene pedidos asociados',
-  product: 'No se puede eliminar porque tiene productos asociados',
-};
+import { getDependencyMessage, getFieldMessage, getErrorMessage } from '../../config/error-codes.config';
 
 export class ForeignKeyHandler extends BasePrismaHandler {
   canHandle(code: string): boolean {
@@ -22,6 +17,7 @@ export class ForeignKeyHandler extends BasePrismaHandler {
   handle(
     exception: Prisma.PrismaClientKnownRequestError,
     response: Response,
+    context: ErrorContext,
   ): Response {
     const meta = exception.meta;
     const constraint = this.extractConstraint(meta);
@@ -34,14 +30,17 @@ export class ForeignKeyHandler extends BasePrismaHandler {
         response,
         dependency.message,
         dependency.dependentTable,
+        context,
+        'DEPENDENCY_VIOLATION',
       );
     }
 
-    return this.buildBadRequestResponse(
-      response,
-      config?.field ?? 'general',
-      config?.message ?? 'El registro relacionado no existe',
-    );
+    // If related record doesn't exist, treat as conflict (DB/business rule)
+    const field = config?.field ?? null;
+    const msg = config?.message ?? getErrorMessage('FOREIGN_KEY_VIOLATION');
+    const errorCode = config?.code ?? 'FOREIGN_KEY_VIOLATION';
+
+    return this.buildConflictResponse(response, field ?? 'general', msg, context, errorCode);
   }
 
   private resolveConfig(constraint: string | null): ConstraintConfig | null {
@@ -68,7 +67,7 @@ export class ForeignKeyHandler extends BasePrismaHandler {
     if (field) {
       return {
         field,
-        message: `El registro relacionado no existe (${field})`,
+        message: getFieldMessage(field),
       };
     }
 
@@ -86,11 +85,12 @@ export class ForeignKeyHandler extends BasePrismaHandler {
     const lowerConstraint = constraint?.toLowerCase() ?? '';
     const lowerMessage = message.toLowerCase();
 
-    for (const [table, msg] of Object.entries(DEPENDENCY_MESSAGES)) {
+    const tables = ['address', 'order', 'product'];
+    for (const table of tables) {
       if (lowerConstraint.includes(table)) {
         return {
           hasDependencies: true,
-          message: msg,
+          message: getDependencyMessage(table),
           dependentTable: table,
         };
       }
@@ -102,7 +102,7 @@ export class ForeignKeyHandler extends BasePrismaHandler {
     ) {
       return {
         hasDependencies: true,
-        message: 'No se puede eliminar porque tiene registros relacionados',
+        message: getDependencyMessage('general'),
         dependentTable: null,
       };
     }

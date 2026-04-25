@@ -1,0 +1,281 @@
+{
+  "main": {
+    "id": "c2b2a2c7ecdebf51",
+    "type": "split",
+    "children": [
+      {
+        "id": "b621b7a40c2bf00b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9b1119fdd67351a4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "react-zero/git flow/como iniciar git flow.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "como iniciar git flow"
+            }
+          },
+          {
+            "id": "f52a75f83eb812d0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "react-zero/git flow/como iniciar git flow.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "como iniciar git flow"
+            }
+          },
+          {
+            "id": "8cfd9d18404b6e04",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "back respuesta error.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "back respuesta error"
+            }
+          }
+        ],
+        "currentTab": 2
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "02710ec606e498b3",
+    "type": "split",
+    "children": [
+      {
+        "id": "dec675688a82160c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b2ea4b1b5b2661a3",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "byCreatedTimeReverse",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "212da9acb5f0d278",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "javaScrip/menu.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "menu"
+            }
+          },
+          {
+            "id": "5c7db4225c26675d",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "javaScrip/java.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "java"
+            }
+          },
+          {
+            "id": "de1e29a422f32567",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": true,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "07e1fde51edcf7d3",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 301.5086555480957,
+    "collapsed": true
+  },
+  "right": {
+    "id": "6468f5005aed7d02",
+    "type": "split",
+    "children": [
+      {
+        "id": "cd71ba25c4885910",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "62fba25948f968f8",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Indice.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Enlaces entrantes de Indice"
+            }
+          },
+          {
+            "id": "f97017b8db683f60",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Indice.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Enlaces salientes de Indice"
+            }
+          },
+          {
+            "id": "0a0d5d7968c19b16",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "19fee8bfd4c95da1",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Indice.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Esquema de Indice"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:Create new base": false,
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "8cfd9d18404b6e04",
+  "lastOpenFiles": [
+    "back respuesta error.md",
+    "react-zero/git flow/como iniciar git flow.md",
+    "react-zero/nest/prisma.md",
+    "react-zero/docker/doker.md",
+    "back.md",
+    "documentacion de proyecto/modulo prisma.md",
+    "documentacion de proyecto/tipos de consultas en repository.md",
+    "documentacion de proyecto/logger.md",
+    "react/router.md",
+    "react/formulario.md",
+    "react/Rutas parametricas.md",
+    "Avanzados.md",
+    "Arrays y tuplas.md",
+    "Adyacente.md",
+    "back-nest-prisma/orden de proyecto.md",
+    "**Context**.md",
+    "back-nest-prisma/inicio.md",
+    "back-nest-prisma/basico ayuda.md",
+    "back-nest-prisma/Proyecto NestJS - prime-back.md",
+    "back-nest-prisma/Instala Prisma CLI y genera el archivo base.md",
+    "**`unshift` /shift.md",
+    "- Spread Operator (copiar/combinar arrays y objetos.md",
+    "2026-02-24.md",
+    "2026-01-28.md",
+    "nest/prisma.md",
+    "Untitled 12.md",
+    "Untitled 8.base",
+    "react-zero/nest",
+    "Untitled 7.base",
+    "react-zero/docker",
+    "react-zero/git flow",
+    "Untitled 6.base",
+    "Untitled 5.base",
+    "Untitled 1.canvas",
+    "Pasted image 20260117211849.png",
+    "Pasted image 20250908173525.png",
+    "Pasted image 20250908173030.png",
+    "Pasted image 20250908172716.png",
+    "Pasted image 20250908172336.png",
+    "Pasted image 20250908171839.png",
+    "Pasted image 20250908142317.png",
+    "Pasted image 20250908142239.png",
+    "Pasted image 20250908142210.png",
+    "Pasted image 20250908142113.png",
+    "react-zero",
+    "documentacion de proyecto",
+    "configuracion de hilda",
+    "Untitled.canvas"
+  ]
+}

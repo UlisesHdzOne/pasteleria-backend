@@ -1,0 +1,91 @@
+{
+  "VALIDATION_ERROR": {
+    "status": 422,
+    "description": "Errores de validación sobre DTOs/inputs.",
+    "message": "Error de validación"
+  },
+  "INVALID_PAGE": {
+    "status": 400,
+    "description": "Parámetro page inválido.",
+    "message": "La página debe ser mayor que 0"
+  },
+  "INVALID_LIMIT": {
+    "status": 400,
+    "description": "Parámetro limit fuera de rango.",
+    "message": "El límite debe estar entre los valores permitidos"
+  },
+  "CUSTOMER_NOT_FOUND": {
+    "status": 404,
+    "description": "Cliente no encontrado.",
+    "message": "Recurso no encontrado"
+  },
+  "CUSTOMER_ALREADY_DELETED": {
+    "status": 400,
+    "description": "Intento de borrar cliente ya eliminado.",
+    "message": "Solicitud inválida"
+  },
+  "RESOURCE_CONFLICT": {
+    "status": 409,
+    "description": "Conflicto por recurso existente (genérico).",
+    "message": "Conflicto de datos"
+  },
+  "DEPENDENT_RECORDS_EXIST": {
+    "status": 409,
+    "description": "No se puede eliminar por registros dependientes.",
+    "message": "No se puede eliminar porque tiene registros relacionados"
+  },
+  "RESOURCE_NOT_FOUND": {
+    "status": 404,
+    "description": "Recurso no encontrado (genérico).",
+    "message": "Recurso no encontrado"
+  },
+  "BAD_REQUEST": {
+    "status": 400,
+    "description": "Bad request genérico.",
+    "message": "Solicitud inválida"
+  },
+  "INTERNAL_SERVER_ERROR": {
+    "status": 500,
+    "description": "Error interno no controlado.",
+    "message": "Error interno del servidor"
+  },
+  "UNIQUE_CONSTRAINT_VIOLATION": {
+    "status": 409,
+    "description": "Violación de constraint único (P2002).",
+    "message": "Conflicto de datos"
+  },
+  "FOREIGN_KEY_VIOLATION": {
+    "status": 400,
+    "description": "Violación de llave foránea (P2003).",
+    "message": "Solicitud inválida"
+  },
+  "RECORD_NOT_FOUND": {
+    "status": 404,
+    "description": "Registro no encontrado en operación (P2025).",
+    "message": "Recurso no encontrado"
+  },
+  "FIELD_MESSAGES": {
+    "email": "El email ya está registrado",
+    "phone": "El teléfono ya está registrado",
+    "sku": "El SKU ya está registrado",
+    "slug": "Esta URL ya está en uso",
+    "name": "Ya existe un registro con este nombre",
+    "username": "El nombre de usuario ya está en uso",
+    "customerId": "El cliente no existe",
+    "addressId": "La dirección no existe",
+    "productId": "El producto no existe",
+    "categoryId": "La categoría no existe",
+    "userId": "El usuario no existe",
+    "orderId": "La orden no existe"
+  },
+  "DEPENDENCY_MESSAGES": {
+    "address": "No se puede eliminar porque tiene direcciones asociadas",
+    "order": "No se puede eliminar porque tiene pedidos asociados",
+    "product": "No se puede eliminar porque tiene productos asociados",
+    "general": "No se puede eliminar porque tiene registros relacionados"
+  },
+  "DYNAMIC_PATTERNS": {
+    "UNIQUE_EXISTS": "{MODEL}_{FIELD}_ALREADY_EXISTS e.g. CUSTOMER_EMAIL_ALREADY_EXISTS",
+    "RELATED_NOT_FOUND": "{FIELD}_RELATED_NOT_FOUND e.g. CUSTOMERID_RELATED_NOT_FOUND"
+  }
+}

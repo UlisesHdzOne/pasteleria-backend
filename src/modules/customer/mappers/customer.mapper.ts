@@ -1,4 +1,5 @@
 import { CreateCustomerDto } from '../dto/create-customer.dto';
+import { UpdateCustomerDto } from '../dto/update-customer.dto';
 import { Prisma } from '@prisma/client';
 
 export class CustomerMapper {
@@ -11,6 +12,7 @@ export class CustomerMapper {
     email: true,
     createdAt: true,
     updatedAt: true,
+    deletedAt: true,
   };
 
   static toCreate(data: CreateCustomerDto): Prisma.CustomerCreateInput {
@@ -20,6 +22,16 @@ export class CustomerMapper {
       phone: data.phone.replace(/\D/g, ''),
       email: data.email || null,
       avatar: data.avatar || null,
+    };
+  }
+
+  static toUpdate(data: UpdateCustomerDto): Prisma.CustomerUpdateInput {
+    return {
+      firstName: data.firstName?.trim(),
+      lastName: data.lastName?.trim(),
+      phone: data.phone?.replace(/\D/g, ''),
+      email: data.email ?? null,
+      avatar: data.avatar ?? null,
     };
   }
 }

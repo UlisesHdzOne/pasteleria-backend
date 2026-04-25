@@ -10,6 +10,7 @@
 export interface ConstraintConfig {
   field: string; // Nombre del campo en la respuesta
   message: string; // Mensaje de error para el usuario
+  code?: string; // Código de error máquina (opcional)
 }
 
 export interface ModelConstraintConfig {
@@ -108,9 +109,9 @@ export const UNIQUE_PATTERNS: Array<{
   },
   {
     pattern: /name/i,
-    getConfig: (constraint, modelName) => ({
+    getConfig: () => ({
       field: 'name',
-      message: `${modelName || 'El registro'} ya existe`,
+      message: 'Ya existe un registro con este nombre',
     }),
   },
   {

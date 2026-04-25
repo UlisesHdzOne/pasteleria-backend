@@ -1,16 +1,13 @@
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
 import { BasePrismaHandler } from './base-prisma.handler';
+import { ErrorContext } from './prisma-error-handler.interface';
 import {
   UNIQUE_CONSTRAINTS,
   UNIQUE_PATTERNS,
   ConstraintConfig,
 } from '../../config/prisma-constraints.config';
-
-const FIELD_MESSAGES: Record<string, string> = {
-  email: 'El email ya está registrado',
-  phone: 'El teléfono ya está registrado',
-};
+import { getFieldMessage, getErrorMessage } from '../../config/error-codes.config';
 
 export class UniqueViolationHandler extends BasePrismaHandler {
   canHandle(code: string): boolean {
@@ -20,6 +17,7 @@ export class UniqueViolationHandler extends BasePrismaHandler {
   handle(
     exception: Prisma.PrismaClientKnownRequestError,
     response: Response,
+    context: ErrorContext,
   ): Response {
     const meta = exception.meta;
     const constraint = this.extractConstraint(meta);
@@ -28,7 +26,11 @@ export class UniqueViolationHandler extends BasePrismaHandler {
 
     const config = this.resolveConfig(constraint, modelName, fields, exception.message);
 
-    return this.buildConflictResponse(response, config.field, config.message);
+    const fieldKey = config.field ?? 'general';
+    const message = config.message || getFieldMessage(fieldKey);
+    const errorCode = config.code ?? 'UNIQUE_CONSTRAINT_VIOLATION';
+
+    return this.buildConflictResponse(response, fieldKey, message, context, errorCode);
   }
 
   private resolveConfig(
@@ -52,7 +54,7 @@ export class UniqueViolationHandler extends BasePrismaHandler {
 
     return {
       field: 'general',
-      message: 'Ya existe un registro con estos datos',
+      message: getErrorMessage('UNIQUE_CONSTRAINT_VIOLATION'),
     };
   }
 
@@ -75,9 +77,9 @@ export class UniqueViolationHandler extends BasePrismaHandler {
   private inferFromFields(fields: string[] | null): ConstraintConfig | null {
     if (!fields) return null;
 
-    for (const [field, message] of Object.entries(FIELD_MESSAGES)) {
-      if (fields.includes(field)) {
-        return { field, message };
+    for (const field of fields) {
+      if (field) {
+        return { field, message: getFieldMessage(field) };
       }
     }
 
@@ -86,10 +88,11 @@ export class UniqueViolationHandler extends BasePrismaHandler {
 
   private inferFromMessage(message: string): ConstraintConfig | null {
     const lower = message.toLowerCase();
+    const fields = ['email', 'phone', 'sku', 'slug', 'username', 'name'];
 
-    for (const [field, msg] of Object.entries(FIELD_MESSAGES)) {
+    for (const field of fields) {
       if (lower.includes(field)) {
-        return { field, message: msg };
+        return { field, message: getFieldMessage(field) };
       }
     }
 

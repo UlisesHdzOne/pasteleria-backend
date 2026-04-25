@@ -1,7 +1,8 @@
 // src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { CustomValidationPipe } from './common/pipes/custom-validation.pipe';
-import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,8 +11,12 @@ async function bootstrap() {
   // Global pipes
   app.useGlobalPipes(new CustomValidationPipe());
 
-  // Global filters
-  app.useGlobalFilters(new PrismaExceptionFilter());
+  // Global filters - obtener del DI container para inyección de dependencias
+  const globalFilter = app.get(GlobalExceptionFilter);
+  app.useGlobalFilters(globalFilter);
+
+  // Global response wrapper
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   // Habilitar CORS si es necesario
 

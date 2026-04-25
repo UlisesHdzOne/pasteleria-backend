@@ -1,4 +1,4 @@
-import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import { ValidationPipe, UnprocessableEntityException } from '@nestjs/common';
 
 export class CustomValidationPipe extends ValidationPipe {
   constructor() {
@@ -14,9 +14,10 @@ export class CustomValidationPipe extends ValidationPipe {
           formattedErrors[field] = Object.values(error.constraints ?? {});
         }
 
-        throw new BadRequestException({
-          statusCode: 400,
-          message: 'Validation error',
+        throw new UnprocessableEntityException({
+          success: false,
+          message: 'Error de validación',
+          data: null,
           errors: formattedErrors,
         });
       },

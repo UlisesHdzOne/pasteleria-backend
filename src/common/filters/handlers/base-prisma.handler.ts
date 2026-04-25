@@ -1,7 +1,8 @@
 import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
-import { PrismaErrorHandler } from './prisma-error-handler.interface';
+import { PrismaErrorHandler, ErrorContext } from './prisma-error-handler.interface';
+import { StandardErrorResponse, ValidationErrors, FieldError } from '../../interfaces/standard-response.interface';
 
 export type DriverError = {
   cause?: {
@@ -19,6 +20,7 @@ export abstract class BasePrismaHandler implements PrismaErrorHandler {
   abstract handle(
     exception: Prisma.PrismaClientKnownRequestError,
     response: Response,
+    context: ErrorContext,
   ): Response;
 
   protected extractConstraint(meta: PrismaMeta | undefined): string | null {
@@ -57,57 +59,93 @@ export abstract class BasePrismaHandler implements PrismaErrorHandler {
     response: Response,
     field: string,
     message: string,
+    context: ErrorContext,
+    errorCode?: string,
   ): Response {
-    return response.status(HttpStatus.CONFLICT).json({
+    const fieldErrors: ValidationErrors = field !== 'general'
+      ? { [field]: { message, code: errorCode ?? 'CONFLICT' } }
+      : { general: { message, code: errorCode ?? 'CONFLICT' } };
+
+    const body: StandardErrorResponse = {
+      success: false,
       statusCode: HttpStatus.CONFLICT,
-      message: 'Conflict',
-      errors: {
-        [field]: [message],
-      },
-    });
+      errorCode: errorCode ?? 'CONFLICT',
+      message,
+      data: null,
+      errors: fieldErrors,
+      timestamp: context.timestamp,
+      path: context.path,
+    };
+
+    return response.status(HttpStatus.CONFLICT).json(body);
   }
 
   protected buildBadRequestResponse(
     response: Response,
     field: string,
     message: string,
+    context: ErrorContext,
+    errorCode?: string,
   ): Response {
-    return response.status(HttpStatus.BAD_REQUEST).json({
+    const fieldErrors: ValidationErrors = field !== 'general'
+      ? { [field]: { message, code: errorCode ?? 'BAD_REQUEST' } }
+      : { general: { message, code: errorCode ?? 'BAD_REQUEST' } };
+
+    const body: StandardErrorResponse = {
+      success: false,
       statusCode: HttpStatus.BAD_REQUEST,
-      message: 'Validation error',
-      errors: {
-        [field]: [message],
-      },
-    });
+      errorCode: errorCode ?? 'BAD_REQUEST',
+      message,
+      data: null,
+      errors: fieldErrors,
+      timestamp: context.timestamp,
+      path: context.path,
+    };
+
+    return response.status(HttpStatus.BAD_REQUEST).json(body);
   }
 
   protected buildNotFoundResponse(
     response: Response,
     message: string,
+    context: ErrorContext,
+    errorCode?: string,
   ): Response {
-    return response.status(HttpStatus.NOT_FOUND).json({
+    const body: StandardErrorResponse = {
+      success: false,
       statusCode: HttpStatus.NOT_FOUND,
+      errorCode: errorCode ?? 'RESOURCE_NOT_FOUND',
       message,
-    });
+      data: null,
+      timestamp: context.timestamp,
+      path: context.path,
+    };
+
+    return response.status(HttpStatus.NOT_FOUND).json(body);
   }
 
   protected buildDependencyResponse(
     response: Response,
     message: string,
     dependentTable: string | null,
+    context: ErrorContext,
+    errorCode?: string,
   ): Response {
-    return response.status(HttpStatus.CONFLICT).json({
+    const fieldErrors: ValidationErrors = dependentTable
+      ? { [dependentTable]: { message, code: errorCode ?? 'DEPENDENCY_VIOLATION' } }
+      : { general: { message, code: errorCode ?? 'DEPENDENCY_VIOLATION' } };
+
+    const body: StandardErrorResponse = {
+      success: false,
       statusCode: HttpStatus.CONFLICT,
-      message: 'Conflict',
-      errors: {
-        general: [message],
-      },
-      dependencyInfo: {
-        hasDependencies: true,
-        message,
-        dependentTable,
-        dependentCount: null,
-      },
-    });
+      errorCode: errorCode ?? 'DEPENDENCY_VIOLATION',
+      message,
+      data: null,
+      errors: fieldErrors,
+      timestamp: context.timestamp,
+      path: context.path,
+    };
+
+    return response.status(HttpStatus.CONFLICT).json(body);
   }
 }
