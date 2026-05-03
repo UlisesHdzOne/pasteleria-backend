@@ -7,7 +7,6 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CustomerResponseDto } from './dto/customer-response.dto';
-import { CreateCustomerResponseDto } from './dto/create-customer-response.dto';
 import { FindCustomerQueryDto } from './dto/find-customer-query.dto';
 import { PaginatedResponse } from '@/common/interfaces/paginated-response.interface';
 import { plainToInstance } from 'class-transformer';
@@ -22,12 +21,39 @@ import { softDelete } from '@/common/repositories/soft-delete.repository';
 export class CustomerService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateCustomerDto): Promise<CreateCustomerResponseDto> {
+  async create(data: CreateCustomerDto): Promise<CustomerResponseDto> {
     const customer = await this.prisma.customer.create({
       data: CustomerMapper.toCreate(data),
     });
 
-    return plainToInstance(CreateCustomerResponseDto, customer, {
+    return plainToInstance(CustomerResponseDto, customer, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  async getById(id: string): Promise<CustomerResponseDto> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      select: CustomerMapper.SELECT,
+    });
+
+    if (!customer) {
+      throw new NotFoundException({
+        message: 'Cliente no encontrado',
+        code: 'CUSTOMER_NOT_FOUND',
+        details: { id },
+      });
+    }
+
+    if (customer.deletedAt) {
+      throw new ConflictException({
+        message: 'Conflicto de datos',
+        code: 'CUSTOMER_ALREADY_DELETED',
+        details: { id, deletedAt: customer.deletedAt },
+      });
+    }
+
+    return plainToInstance(CustomerResponseDto, customer, {
       excludeExtraneousValues: true,
     });
   }

@@ -20,8 +20,8 @@ export class UpdateCustomerDto {
   lastName?: string;
 
   @IsString()
-  @Matches(/^[0-9]+$/, {
-    message: 'El teléfono solo debe contener números',
+  @Matches(/^\(?\d{2,3}\)?[\s\-]?\d{3,4}[\s\-]?\d{4}$/, {
+    message: 'El teléfono debe tener un formato válido (ej: (555) 123-4567, 555-123-4567, 5551234567)',
   })
   @IsOptional()
   @MinLength(10, { message: 'El teléfono debe tener al menos 10 dígitos' })

@@ -13,7 +13,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { FindCustomerQueryDto } from './dto/find-customer-query.dto';
 
-@Controller('customer')
+@Controller('api/customer')
 export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
@@ -25,6 +25,11 @@ export class CustomerController {
   @Get()
   findAll(@Query() query: FindCustomerQueryDto) {
     return this.customerService.findAll(query);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.customerService.getById(id);
   }
 
   @Delete(':id')

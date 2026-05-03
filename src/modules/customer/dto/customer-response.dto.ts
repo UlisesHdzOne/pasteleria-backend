@@ -1,8 +1,4 @@
-import { Customer } from '@prisma/client';
 import { Exclude, Expose, Transform } from 'class-transformer';
-import { buildFullName } from '../utils/customer.utils';
-
-type CustomerFullName = Pick<Customer, 'firstName' | 'lastName'>;
 
 @Exclude()
 export class CustomerResponseDto {
@@ -10,8 +6,10 @@ export class CustomerResponseDto {
   id!: string;
 
   @Expose()
-  @Transform(({ obj }: { obj: CustomerFullName }) => buildFullName(obj))
-  fullName!: string;
+  firstName!: string;
+
+  @Expose()
+  lastName!: string;
 
   @Expose()
   phone!: string;
@@ -20,11 +18,17 @@ export class CustomerResponseDto {
   email!: string | null;
 
   @Expose()
-  createdAt!: Date;
+  avatar!: string | null;
 
   @Expose()
-  updatedAt!: Date;
+  @Transform(({ value }) => value.toISOString())
+  createdAt!: string;
 
   @Expose()
-  deletedAt!: Date | null;
+  @Transform(({ value }) => value.toISOString())
+  updatedAt!: string;
+
+  @Expose()
+  @Transform(({ value }) => value ? value.toISOString() : null)
+  deletedAt!: string | null;
 }
